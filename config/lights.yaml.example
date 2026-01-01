@@ -1,0 +1,40 @@
+# WiZ Light Controller Configuration
+# This file stores discovered lights, groups, and custom scenes.
+
+# Lights are auto-discovered, but you can add aliases here.
+# After running 'wizctl discover', lights will be added automatically.
+lights: {}
+  # Example:
+  # living_room:
+  #   ip: "192.168.1.100"
+  #   alias: "Living Room Main"
+  # bedroom_lamp:
+  #   ip: "192.168.1.101"
+  #   alias: "Bedroom Lamp"
+
+# Groups let you control multiple lights at once
+groups:
+  all: ["*"]  # Special wildcard - includes all lights
+  # Example:
+  # bedroom: ["bedroom_lamp", "bedroom_ceiling"]
+  # living_room: ["living_room", "living_room_accent"]
+
+# Custom scenes with predefined settings
+scenes:
+  movie:
+    brightness: 20
+    temperature: 2700  # Warm white
+  reading:
+    brightness: 100
+    temperature: 4000  # Neutral white
+  work:
+    brightness: 100
+    temperature: 6500  # Cool daylight
+  relax:
+    brightness: 40
+    temperature: 2200  # Very warm
+  night:
+    brightness: 5
+    temperature: 2200
+    color: [255, 100, 50]  # Optional: RGB override
+
