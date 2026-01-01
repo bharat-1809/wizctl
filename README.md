@@ -1,231 +1,117 @@
-# WiZ Light Controller (wizctl)
+# wizctl
 
-Control Philips WiZ smart lights from the command line or via REST API. Designed for AI agent integration and automation.
+Control Philips WiZ smart lights from the command line or REST API.
 
 ## Features
 
-- **Light Discovery**: Auto-discover WiZ lights on your local network
-- **CLI Control**: Full control from your terminal
-- **REST API**: Programmatic access for AI agents and integrations
-- **All Light Features**: On/off, brightness, RGB color, color temperature
-- **Built-in Scenes**: 32 WiZ scenes (Cozy, Movie, Fireplace, etc.)
-- **Custom Scenes**: Define your own scenes in YAML
-- **Group Control**: Control multiple lights at once
-- **Zero Cloud**: 100% local control via UDP
+- Auto-discover WiZ lights on local network
+- Full control: on/off, brightness, RGB color, color temperature
+- Group and scene support
 
 ## Installation
 
 ```bash
-# Clone the repository
-cd smart_light
-
-# Create virtual environment (recommended)
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install the package
+source venv/bin/activate
 pip install -e .
-
-# Or install dependencies directly
-pip install -r requirements.txt
 ```
 
 ## Quick Start
 
-### 1. Discover Lights
-
-First, discover WiZ lights on your network:
-
 ```bash
+# Discover lights on your network
 wizctl discover
-```
 
-### 2. List Lights
-
-```bash
+# List discovered lights
 wizctl list
-```
 
-### 3. Control Lights
-
-```bash
-# Turn on/off
-wizctl on light_192_168_1_100
-wizctl off light_192_168_1_100
-
-# Or use IP directly
+# Control a light
 wizctl on 192.168.1.100
-
-# Toggle
-wizctl toggle 192.168.1.100
-
-# Set brightness (0-100%)
+wizctl off 192.168.1.100
 wizctl brightness 192.168.1.100 50
-
-# Set color (RGB)
 wizctl color 192.168.1.100 255 100 50
-
-# Set color temperature (2200-6500K)
 wizctl temp 192.168.1.100 3000
+wizctl scene 192.168.1.100 Cozy
 
-# Apply a scene
-wizctl scene 192.168.1.100 "Cozy"
-```
-
-### 4. Set Aliases (Optional)
-
-```bash
+# Set a friendly alias
 wizctl alias light_192_168_1_100 "Living Room"
 wizctl on "Living Room"
 ```
 
-## CLI Reference
+## CLI Commands
 
-### Discovery & Status
+```
+wizctl discover              Discover lights on the network
+wizctl list                  List configured lights
+wizctl status <light>        Get light status
 
-| Command | Description |
-|---------|-------------|
-| `wizctl discover` | Find WiZ lights on the network |
-| `wizctl list` | List all configured lights |
-| `wizctl status <light>` | Get current light state |
+wizctl on <light>            Turn on
+wizctl off <light>           Turn off
+wizctl toggle <light>        Toggle on/off
+wizctl brightness <light> N  Set brightness (0-100)
+wizctl color <light> R G B   Set RGB color
+wizctl temp <light> K        Set color temperature (2200-6500)
+wizctl scene <light> NAME    Apply a scene
+wizctl scenes                List available scenes
 
-### Light Control
+wizctl group list            List groups
+wizctl group on <group>      Turn on group
+wizctl group off <group>     Turn off group
 
-| Command | Description |
-|---------|-------------|
-| `wizctl on <light> [-b BRIGHTNESS]` | Turn on (optionally set brightness) |
-| `wizctl off <light>` | Turn off |
-| `wizctl toggle <light>` | Toggle on/off |
-| `wizctl brightness <light> <0-100>` | Set brightness |
-| `wizctl color <light> <R> <G> <B>` | Set RGB color |
-| `wizctl temp <light> <KELVIN>` | Set color temperature |
-| `wizctl scene <light> <SCENE>` | Apply a scene |
-
-### Scenes
-
-| Command | Description |
-|---------|-------------|
-| `wizctl scenes` | List all available scenes |
-| `wizctl scene <light> <name>` | Apply scene to light |
-
-### Groups
-
-| Command | Description |
-|---------|-------------|
-| `wizctl group list` | List all groups |
-| `wizctl group on <group>` | Turn on group |
-| `wizctl group off <group>` | Turn off group |
-| `wizctl group toggle <group>` | Toggle group |
-| `wizctl group scene <group> <scene>` | Apply scene to group |
-
-### Server
-
-| Command | Description |
-|---------|-------------|
-| `wizctl serve [-p PORT]` | Start REST API server |
+wizctl serve                 Start REST API server
+```
 
 ## REST API
-
-Start the server:
 
 ```bash
 wizctl serve --port 8000
 ```
 
-### API Endpoints
+Endpoints:
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/lights` | List all lights |
-| POST | `/lights/discover` | Discover new lights |
-| GET | `/lights/{id}` | Get light status |
-| POST | `/lights/{id}/on` | Turn on |
-| POST | `/lights/{id}/off` | Turn off |
-| POST | `/lights/{id}/toggle` | Toggle |
-| PUT | `/lights/{id}/brightness` | Set brightness |
-| PUT | `/lights/{id}/color` | Set RGB color |
-| PUT | `/lights/{id}/temperature` | Set temperature |
-| POST | `/lights/{id}/scene` | Apply scene |
-| GET | `/scenes` | List scenes |
-| GET | `/groups` | List groups |
-| POST | `/groups/{name}/on` | Turn on group |
-| POST | `/groups/{name}/off` | Turn off group |
+```
+GET  /lights                 List all lights
+POST /lights/discover        Discover new lights
+GET  /lights/{id}            Get light status
+POST /lights/{id}/on         Turn on
+POST /lights/{id}/off        Turn off
+POST /lights/{id}/toggle     Toggle
+PUT  /lights/{id}/brightness Set brightness
+PUT  /lights/{id}/color      Set RGB color
+PUT  /lights/{id}/temperature Set temperature
+POST /lights/{id}/scene      Apply scene
+GET  /scenes                 List scenes
+GET  /groups                 List groups
+POST /groups/{name}/on       Turn on group
+POST /groups/{name}/off      Turn off group
+```
 
-### Interactive Docs
+API docs available at `http://localhost:8000/docs`
 
-Visit `http://localhost:8000/docs` for Swagger UI documentation.
-
-### Example API Usage
+### Example
 
 ```bash
-# Discover lights
-curl -X POST http://localhost:8000/lights/discover
-
-# List lights
-curl http://localhost:8000/lights
-
-# Turn on a light
 curl -X POST http://localhost:8000/lights/192.168.1.100/on
 
-# Set brightness to 50%
 curl -X PUT http://localhost:8000/lights/192.168.1.100/brightness \
   -H "Content-Type: application/json" \
   -d '{"value": 50}'
-
-# Set color to orange
-curl -X PUT http://localhost:8000/lights/192.168.1.100/color \
-  -H "Content-Type: application/json" \
-  -d '{"r": 255, "g": 165, "b": 0}'
-
-# Apply a scene
-curl -X POST http://localhost:8000/lights/192.168.1.100/scene \
-  -H "Content-Type: application/json" \
-  -d '{"scene": "Cozy"}'
-```
-
-## AI Agent Integration
-
-The API is designed for AI agent control. Example Python usage:
-
-```python
-import httpx
-
-async def control_lights():
-    async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
-        # Get all lights
-        response = await client.get("/lights")
-        lights = response.json()["lights"]
-        
-        # Turn on living room
-        await client.post("/lights/living_room/on")
-        
-        # Set to warm, dim lighting
-        await client.put("/lights/living_room/brightness", json={"value": 30})
-        await client.put("/lights/living_room/temperature", json={"kelvin": 2700})
-        
-        # Or use a scene
-        await client.post("/lights/living_room/scene", json={"scene": "Cozy"})
 ```
 
 ## Configuration
 
-Configuration is stored in `config/lights.yaml`:
+Edit `config/lights.yaml`:
 
 ```yaml
-# Discovered lights (auto-populated)
 lights:
-  light_192_168_1_100:
+  living_room:
     ip: "192.168.1.100"
     alias: "Living Room"
-    mac: "AA:BB:CC:DD:EE:FF"
 
-# Light groups
 groups:
-  all: ["*"]  # Wildcard for all lights
+  all: ["*"]
   bedroom: ["bedroom_main", "bedroom_lamp"]
-  living_room: ["living_room"]
 
-# Custom scenes
 scenes:
   movie:
     brightness: 20
@@ -233,56 +119,28 @@ scenes:
   work:
     brightness: 100
     temperature: 6500
-  romantic:
-    brightness: 30
-    color: [255, 100, 100]
 ```
 
 ## Built-in Scenes
 
-WiZ lights support 32 built-in scenes:
-
-| ID | Scene | ID | Scene |
-|----|-------|----|-------|
-| 1 | Ocean | 17 | True Colors |
-| 2 | Romance | 18 | TV Time |
-| 3 | Sunset | 19 | Plant Growth |
-| 4 | Party | 20 | Spring |
-| 5 | Fireplace | 21 | Summer |
-| 6 | Cozy | 22 | Fall |
-| 7 | Forest | 23 | Deep Dive |
-| 8 | Pastel Colors | 24 | Jungle |
-| 9 | Wake Up | 25 | Mojito |
-| 10 | Bedtime | 26 | Club |
-| 11 | Warm White | 27 | Christmas |
-| 12 | Daylight | 28 | Halloween |
-| 13 | Cool White | 29 | Candlelight |
-| 14 | Night Light | 30 | Golden White |
-| 15 | Focus | 31 | Pulse |
-| 16 | Relax | 32 | Steampunk |
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `WIZCTL_CONFIG` | Path to config file (default: `config/lights.yaml`) |
+Ocean, Romance, Sunset, Party, Fireplace, Cozy, Forest, Pastel Colors,
+Wake Up, Bedtime, Warm White, Daylight, Cool White, Night Light, Focus,
+Relax, True Colors, TV Time, Plant Growth, Spring, Summer, Fall,
+Deep Dive, Jungle, Mojito, Club, Christmas, Halloween, Candlelight,
+Golden White, Pulse, Steampunk
 
 ## Troubleshooting
 
-### Lights not discovered
+**Lights not discovered?**
+- Check lights are on the same network
+- Try: `wizctl discover -b 192.168.1.255` (your subnet broadcast)
+- Ensure UDP port 38899 isn't blocked
 
-1. Ensure your WiZ lights are connected to the same network
-2. Try specifying your subnet broadcast: `wizctl discover -b 192.168.1.255`
-3. Check firewall allows UDP on port 38899
-
-### Connection timeout
-
-WiZ lights communicate via UDP. Ensure:
-- Lights are powered on
-- No firewall blocking UDP traffic
-- Using correct IP address
+**Connection timeout?**
+- Verify light is powered on
+- Check IP address is correct
+- Ensure no firewall blocking UDP
 
 ## License
 
 MIT
-

@@ -1,4 +1,4 @@
-"""Scene API routes."""
+"""Scene routes."""
 
 from fastapi import APIRouter
 
@@ -10,22 +10,18 @@ router = APIRouter(prefix="/scenes", tags=["scenes"])
 
 @router.get("", response_model=SceneListResponse)
 async def list_scenes():
-    """List all available scenes (built-in and custom)."""
     builtin = SceneManager.get_builtin_scenes()
     custom = list(SceneManager.get_custom_scenes().keys())
-    
     return SceneListResponse(builtin=builtin, custom=custom)
 
 
 @router.get("/builtin")
 async def list_builtin_scenes():
-    """List all built-in WiZ scenes."""
     return {"scenes": SceneManager.get_builtin_scenes()}
 
 
 @router.get("/custom")
 async def list_custom_scenes():
-    """List all custom scenes from configuration."""
     scenes = SceneManager.get_custom_scenes()
     return {
         "scenes": [
@@ -38,4 +34,3 @@ async def list_custom_scenes():
             for name, scene in scenes.items()
         ]
     }
-
