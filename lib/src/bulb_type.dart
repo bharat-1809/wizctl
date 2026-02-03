@@ -8,32 +8,44 @@
 /// - `FANDIM` - Fan with dimmable light
 enum BulbClass {
   /// Full RGB + tunable white (supports color, temperature, scenes).
-  rgb('RGB',
-      supportsColor: true, supportsTemperature: true, supportsBrightness: true),
+  rgb(
+    'RGB',
+    supportsColor: true,
+    supportsTemperature: true,
+    supportsBrightness: true,
+  ),
 
   /// Tunable white only (supports temperature, brightness only).
-  tw('Tunable White',
-      supportsColor: false,
-      supportsTemperature: true,
-      supportsBrightness: true),
+  tw(
+    'Tunable White',
+    supportsColor: false,
+    supportsTemperature: true,
+    supportsBrightness: true,
+  ),
 
   /// Dimmable white only (brightness only, fixed temperature).
-  dw('Dimmable White',
-      supportsColor: false,
-      supportsTemperature: false,
-      supportsBrightness: true),
+  dw(
+    'Dimmable White',
+    supportsColor: false,
+    supportsTemperature: false,
+    supportsBrightness: true,
+  ),
 
   /// Smart socket (on/off only, no dimming).
-  socket('Socket',
-      supportsColor: false,
-      supportsTemperature: false,
-      supportsBrightness: false),
+  socket(
+    'Socket',
+    supportsColor: false,
+    supportsTemperature: false,
+    supportsBrightness: false,
+  ),
 
   /// Fan with dimmable light.
-  fanDim('Fan Dimmer',
-      supportsColor: false,
-      supportsTemperature: false,
-      supportsBrightness: true);
+  fanDim(
+    'Fan Dimmer',
+    supportsColor: false,
+    supportsTemperature: false,
+    supportsBrightness: true,
+  );
 
   /// Human-readable name for the bulb class.
   final String displayName;
@@ -101,7 +113,9 @@ class KelvinRange {
     }
     if (json is List && json.length >= 2) {
       return KelvinRange(
-          min: json[0] as int? ?? 2200, max: json[1] as int? ?? 6500);
+        min: json[0] as int? ?? 2200,
+        max: json[1] as int? ?? 6500,
+      );
     }
     return KelvinRange.standard;
   }

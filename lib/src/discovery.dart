@@ -135,8 +135,10 @@ class WizDiscovery {
             try {
               var responseText = utf8.decode(datagram.data);
               var response = jsonDecode(responseText) as Map<String, dynamic>;
-              var light =
-                  DiscoveredLight.fromJson(response, datagram.address.address);
+              var light = DiscoveredLight.fromJson(
+                response,
+                datagram.address.address,
+              );
 
               // Deduplicate by MAC address
               if (light.mac.isNotEmpty && !seenMacs.contains(light.mac)) {

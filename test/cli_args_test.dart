@@ -26,8 +26,11 @@ String? getTarget(ArgResults command, {int restOffset = 0}) {
 }
 
 /// Gets an option value, joining with rest arguments if the shell split a quoted name.
-String? getOptionWithRest(ArgResults command, String optionName,
-    {int restOffset = 0}) {
+String? getOptionWithRest(
+  ArgResults command,
+  String optionName, {
+  int restOffset = 0,
+}) {
   var value = command[optionName] as String?;
   if (value == null) return null;
 
@@ -56,8 +59,9 @@ void main() {
       addTargetOption(parser.addCommand('scene'))
         ..addOption('scene', abbr: 's')
         ..addOption('brightness', abbr: 'b');
-      addTargetOption(parser.addCommand('brightness'))
-          .addOption('value', abbr: 'b');
+      addTargetOption(
+        parser.addCommand('brightness'),
+      ).addOption('value', abbr: 'b');
     });
 
     group('simple commands (on/off)', () {
@@ -108,8 +112,14 @@ void main() {
       test('target before -c flag', () {
         // wizctl color -t "Living Room" -c 255,100,50
         // Shell: color -t Living Room -c 255,100,50
-        var results =
-            parser.parse(['color', '-t', 'Living', 'Room', '-c', '255,100,50']);
+        var results = parser.parse([
+          'color',
+          '-t',
+          'Living',
+          'Room',
+          '-c',
+          '255,100,50',
+        ]);
         var command = results.command!;
         expect(getTarget(command), equals('Living Room'));
         expect(command['rgb'], equals('255,100,50'));
@@ -118,8 +128,14 @@ void main() {
       test('target after -c flag', () {
         // wizctl color -c 255,100,50 -t "Living Room"
         // Shell: color -c 255,100,50 -t Living Room
-        var results =
-            parser.parse(['color', '-c', '255,100,50', '-t', 'Living', 'Room']);
+        var results = parser.parse([
+          'color',
+          '-c',
+          '255,100,50',
+          '-t',
+          'Living',
+          'Room',
+        ]);
         var command = results.command!;
         expect(getTarget(command), equals('Living Room'));
         expect(command['rgb'], equals('255,100,50'));
@@ -128,8 +144,16 @@ void main() {
       test('target between flags', () {
         // wizctl color -c 255,100,50 -t "Living Room" -b 80
         // Shell: color -c 255,100,50 -t Living Room -b 80
-        var results = parser.parse(
-            ['color', '-c', '255,100,50', '-t', 'Living', 'Room', '-b', '80']);
+        var results = parser.parse([
+          'color',
+          '-c',
+          '255,100,50',
+          '-t',
+          'Living',
+          'Room',
+          '-b',
+          '80',
+        ]);
         var command = results.command!;
         expect(getTarget(command), equals('Living Room'));
         expect(command['rgb'], equals('255,100,50'));
@@ -147,7 +171,7 @@ void main() {
           '-c',
           '255,100,50',
           '-b',
-          '80'
+          '80',
         ]);
         var command = results.command!;
         expect(getTarget(command), equals('Living Room Light'));
@@ -157,8 +181,16 @@ void main() {
 
       test('target at end after all flags', () {
         // wizctl color -c 255,100,50 -b 80 -t "Living Room"
-        var results = parser.parse(
-            ['color', '-c', '255,100,50', '-b', '80', '-t', 'Living', 'Room']);
+        var results = parser.parse([
+          'color',
+          '-c',
+          '255,100,50',
+          '-b',
+          '80',
+          '-t',
+          'Living',
+          'Room',
+        ]);
         var command = results.command!;
         expect(getTarget(command), equals('Living Room'));
         expect(command['rgb'], equals('255,100,50'));
@@ -169,8 +201,14 @@ void main() {
     group('temp command', () {
       test('target with kelvin flag', () {
         // wizctl temp -t "Living Room" -k 4000
-        var results =
-            parser.parse(['temp', '-t', 'Living', 'Room', '-k', '4000']);
+        var results = parser.parse([
+          'temp',
+          '-t',
+          'Living',
+          'Room',
+          '-k',
+          '4000',
+        ]);
         var command = results.command!;
         expect(getTarget(command), equals('Living Room'));
         expect(command['kelvin'], equals('4000'));
@@ -178,8 +216,16 @@ void main() {
 
       test('target with kelvin and brightness', () {
         // wizctl temp -t "Ujjawal's Room" -k 4000 -b 80
-        var results = parser.parse(
-            ['temp', '-t', "Ujjawal's", 'Room', '-k', '4000', '-b', '80']);
+        var results = parser.parse([
+          'temp',
+          '-t',
+          "Ujjawal's",
+          'Room',
+          '-k',
+          '4000',
+          '-b',
+          '80',
+        ]);
         var command = results.command!;
         expect(getTarget(command), equals("Ujjawal's Room"));
         expect(command['kelvin'], equals('4000'));
@@ -190,8 +236,14 @@ void main() {
     group('scene command', () {
       test('target with scene flag', () {
         // wizctl scene -t "Living Room" -s cozy
-        var results =
-            parser.parse(['scene', '-t', 'Living', 'Room', '-s', 'cozy']);
+        var results = parser.parse([
+          'scene',
+          '-t',
+          'Living',
+          'Room',
+          '-s',
+          'cozy',
+        ]);
         var command = results.command!;
         expect(getTarget(command), equals('Living Room'));
         expect(command['scene'], equals('cozy'));
@@ -199,8 +251,16 @@ void main() {
 
       test('all flags in different order', () {
         // wizctl scene -s cozy -b 80 -t "Living Room"
-        var results = parser
-            .parse(['scene', '-s', 'cozy', '-b', '80', '-t', 'Living', 'Room']);
+        var results = parser.parse([
+          'scene',
+          '-s',
+          'cozy',
+          '-b',
+          '80',
+          '-t',
+          'Living',
+          'Room',
+        ]);
         var command = results.command!;
         expect(getTarget(command), equals('Living Room'));
         expect(command['scene'], equals('cozy'));
@@ -211,8 +271,14 @@ void main() {
     group('brightness command', () {
       test('target with value flag', () {
         // wizctl brightness -t "Living Room" -b 80
-        var results =
-            parser.parse(['brightness', '-t', 'Living', 'Room', '-b', '80']);
+        var results = parser.parse([
+          'brightness',
+          '-t',
+          'Living',
+          'Room',
+          '-b',
+          '80',
+        ]);
         var command = results.command!;
         expect(getTarget(command), equals('Living Room'));
         expect(command['value'], equals('80'));
@@ -257,8 +323,14 @@ void main() {
       test('name with spaces', () {
         // wizctl alias --ip 192.168.1.100 -n "Living Room"
         // Shell: alias --ip 192.168.1.100 -n Living Room
-        var results = parser
-            .parse(['alias', '--ip', '192.168.1.100', '-n', 'Living', 'Room']);
+        var results = parser.parse([
+          'alias',
+          '--ip',
+          '192.168.1.100',
+          '-n',
+          'Living',
+          'Room',
+        ]);
         var command = results.command!;
         expect(command['ip'], equals('192.168.1.100'));
         expect(getOptionWithRest(command, 'name'), equals('Living Room'));
@@ -266,15 +338,26 @@ void main() {
 
       test('name with apostrophe', () {
         // wizctl alias --ip 192.168.1.100 -n "Ujjawal's Room"
-        var results = parser.parse(
-            ['alias', '--ip', '192.168.1.100', '-n', "Ujjawal's", 'Room']);
+        var results = parser.parse([
+          'alias',
+          '--ip',
+          '192.168.1.100',
+          '-n',
+          "Ujjawal's",
+          'Room',
+        ]);
         var command = results.command!;
         expect(getOptionWithRest(command, 'name'), equals("Ujjawal's Room"));
       });
 
       test('single word name', () {
-        var results =
-            parser.parse(['alias', '--ip', '192.168.1.100', '-n', 'Kitchen']);
+        var results = parser.parse([
+          'alias',
+          '--ip',
+          '192.168.1.100',
+          '-n',
+          'Kitchen',
+        ]);
         var command = results.command!;
         expect(getOptionWithRest(command, 'name'), equals('Kitchen'));
       });
@@ -287,7 +370,7 @@ void main() {
           '-n',
           'Living',
           'Room',
-          'Light'
+          'Light',
         ]);
         var command = results.command!;
         expect(getOptionWithRest(command, 'name'), equals('Living Room Light'));
@@ -297,8 +380,7 @@ void main() {
     group('group remove command', () {
       test('group name with spaces', () {
         // wizctl group remove -n "All Lights"
-        var results =
-            parser.parse(['group', 'remove', '-n', 'All', 'Lights']);
+        var results = parser.parse(['group', 'remove', '-n', 'All', 'Lights']);
         var command = results.command!.command!;
         expect(getOptionWithRest(command, 'name'), equals('All Lights'));
       });
@@ -339,8 +421,14 @@ void main() {
 
     test('color command does not consume RGB as part of target', () {
       // Ensure -c flag properly terminates target collection
-      var results =
-          parser.parse(['color', '-t', 'Living', 'Room', '-c', '255,100,50']);
+      var results = parser.parse([
+        'color',
+        '-t',
+        'Living',
+        'Room',
+        '-c',
+        '255,100,50',
+      ]);
       var command = results.command!;
       expect(getTarget(command), equals('Living Room'));
       expect(command['rgb'], equals('255,100,50'));

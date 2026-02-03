@@ -62,7 +62,10 @@ Future<void> executeOnLights(
 /// Turns a light on.
 Future<void> onCommand(String target, {int? brightness}) async {
   await executeOnLights(
-      target, 'Turned on', (light) => light.turnOn(brightness: brightness));
+    target,
+    'Turned on',
+    (light) => light.turnOn(brightness: brightness),
+  );
 }
 
 /// Turns a light off.
@@ -82,13 +85,21 @@ Future<void> brightnessCommand(String target, int percent) async {
     exitCode = 1;
     return;
   }
-  await executeOnLights(target, 'Brightness set to $percent%',
-      (light) => light.setBrightness(percent));
+  await executeOnLights(
+    target,
+    'Brightness set to $percent%',
+    (light) => light.setBrightness(percent),
+  );
 }
 
 /// Sets RGB color.
-Future<void> colorCommand(String target, int r, int g, int b,
-    {int? brightness}) async {
+Future<void> colorCommand(
+  String target,
+  int r,
+  int g,
+  int b, {
+  int? brightness,
+}) async {
   if (r < minColorValue ||
       r > maxColorValue ||
       g < minColorValue ||
@@ -96,12 +107,16 @@ Future<void> colorCommand(String target, int r, int g, int b,
       b < minColorValue ||
       b > maxColorValue) {
     stderr.writeln(
-        'Error: RGB values must be between $minColorValue and $maxColorValue.');
+      'Error: RGB values must be between $minColorValue and $maxColorValue.',
+    );
     exitCode = 1;
     return;
   }
-  await executeOnLights(target, 'Color set to RGB($r, $g, $b)',
-      (light) => light.setColor(r, g, b, brightness: brightness));
+  await executeOnLights(
+    target,
+    'Color set to RGB($r, $g, $b)',
+    (light) => light.setColor(r, g, b, brightness: brightness),
+  );
 }
 
 /// Sets color temperature.
@@ -111,13 +126,19 @@ Future<void> tempCommand(String target, int kelvin, {int? brightness}) async {
     exitCode = 1;
     return;
   }
-  await executeOnLights(target, 'Temperature set to ${kelvin}K',
-      (light) => light.setTemperature(kelvin, brightness: brightness));
+  await executeOnLights(
+    target,
+    'Temperature set to ${kelvin}K',
+    (light) => light.setTemperature(kelvin, brightness: brightness),
+  );
 }
 
 /// Applies a scene.
-Future<void> sceneCommand(String target, String sceneName,
-    {int? brightness}) async {
+Future<void> sceneCommand(
+  String target,
+  String sceneName, {
+  int? brightness,
+}) async {
   var scene = WizScene.fromName(sceneName);
   if (scene == null) {
     stderr.writeln('Error: Unknown scene "$sceneName".');
@@ -125,8 +146,11 @@ Future<void> sceneCommand(String target, String sceneName,
     exitCode = 1;
     return;
   }
-  await executeOnLights(target, 'Scene set to ${scene.displayName}',
-      (light) => light.setScene(scene, brightness: brightness));
+  await executeOnLights(
+    target,
+    'Scene set to ${scene.displayName}',
+    (light) => light.setScene(scene, brightness: brightness),
+  );
 }
 
 /// Lists available scenes.

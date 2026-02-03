@@ -7,8 +7,7 @@ import '../config.dart';
 Future<void> discoverCommand({int timeout = 5, bool save = false}) async {
   stdout.writeln('Discovering WiZ lights...');
 
-  var lights =
-      await WizDiscovery.discover(timeout: Duration(seconds: timeout));
+  var lights = await WizDiscovery.discover(timeout: Duration(seconds: timeout));
 
   if (lights.isEmpty) {
     stdout.writeln('No lights found.');
@@ -32,10 +31,7 @@ Future<void> discoverCommand({int timeout = 5, bool save = false}) async {
   if (save) {
     var config = await CliConfig.load();
     for (var light in lights) {
-      config.lights.putIfAbsent(
-        light.ip,
-        () => LightConfig(mac: light.mac),
-      );
+      config.lights.putIfAbsent(light.ip, () => LightConfig(mac: light.mac));
     }
     await config.save();
     stdout.writeln('Saved ${lights.length} light(s) to config.');

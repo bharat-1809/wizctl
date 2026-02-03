@@ -54,8 +54,11 @@ String? requireTarget(ArgResults command, String usage, {int restOffset = 0}) {
 
 /// Gets an option value, joining with rest arguments if the shell split a quoted name.
 /// Similar to getTarget but for any named option.
-String? getOptionWithRest(ArgResults command, String optionName,
-    {int restOffset = 0}) {
+String? getOptionWithRest(
+  ArgResults command,
+  String optionName, {
+  int restOffset = 0,
+}) {
   var value = command[optionName] as String?;
   if (value == null) return null;
 
@@ -71,39 +74,68 @@ void main(List<String> arguments) async {
   var parser = ArgParser()
     ..addFlag('help', abbr: 'h', negatable: false, help: 'Show help message')
     ..addFlag('version', abbr: 'v', negatable: false, help: 'Show version')
-    ..addFlag('debug',
-        abbr: 'd', negatable: false, help: 'Enable debug logging')
+    ..addFlag(
+      'debug',
+      abbr: 'd',
+      negatable: false,
+      help: 'Enable debug logging',
+    )
     ..addFlag('verbose', negatable: false, help: 'Enable verbose logging');
 
-  parser.addCommand('discover').addOption('timeout',
-      abbr: 't',
-      defaultsTo: '$cliDefaultDiscoveryTimeoutSeconds',
-      help: 'Discovery timeout in seconds');
-  (parser.commands['discover'] as ArgParser).addFlag('save',
-      abbr: 's', negatable: false, help: 'Save discovered lights to config');
+  parser
+      .addCommand('discover')
+      .addOption(
+        'timeout',
+        abbr: 't',
+        help: 'Discovery timeout in seconds',
+        defaultsTo: '$cliDefaultDiscoveryTimeoutSeconds',
+      );
+  (parser.commands['discover'] as ArgParser).addFlag(
+    'save',
+    abbr: 's',
+    negatable: false,
+    help: 'Save discovered lights to config',
+  );
 
   parser.addCommand('list');
   addTargetOption(parser.addCommand('status'));
-  addTargetOption(parser.addCommand('on')).addOption('brightness',
-      abbr: 'b', help: 'Brightness ($minBrightness-$maxBrightness)');
+  addTargetOption(parser.addCommand('on')).addOption(
+    'brightness',
+    abbr: 'b',
+    help: 'Brightness ($minBrightness-$maxBrightness)',
+  );
   addTargetOption(parser.addCommand('off'));
   addTargetOption(parser.addCommand('toggle'));
-  addTargetOption(parser.addCommand('brightness')).addOption('value',
-      abbr: 'b', help: 'Brightness value ($minBrightness-$maxBrightness)');
+  addTargetOption(parser.addCommand('brightness')).addOption(
+    'value',
+    abbr: 'b',
+    help: 'Brightness value ($minBrightness-$maxBrightness)',
+  );
   addTargetOption(parser.addCommand('color'))
     ..addOption('rgb', abbr: 'c', help: 'RGB color as R,G,B (e.g., 255,100,50)')
-    ..addOption('brightness',
-        abbr: 'b', help: 'Brightness ($minBrightness-$maxBrightness)');
+    ..addOption(
+      'brightness',
+      abbr: 'b',
+      help: 'Brightness ($minBrightness-$maxBrightness)',
+    );
   addTargetOption(parser.addCommand('temp'))
-    ..addOption('kelvin',
-        abbr: 'k',
-        help: 'Temperature in Kelvin ($minTemperature-$maxTemperature)')
-    ..addOption('brightness',
-        abbr: 'b', help: 'Brightness ($minBrightness-$maxBrightness)');
+    ..addOption(
+      'kelvin',
+      abbr: 'k',
+      help: 'Temperature in Kelvin ($minTemperature-$maxTemperature)',
+    )
+    ..addOption(
+      'brightness',
+      abbr: 'b',
+      help: 'Brightness ($minBrightness-$maxBrightness)',
+    );
   addTargetOption(parser.addCommand('scene'))
     ..addOption('scene', abbr: 's', help: 'Scene name')
-    ..addOption('brightness',
-        abbr: 'b', help: 'Brightness ($minBrightness-$maxBrightness)');
+    ..addOption(
+      'brightness',
+      abbr: 'b',
+      help: 'Brightness ($minBrightness-$maxBrightness)',
+    );
   parser.addCommand('scenes');
   parser.addCommand('alias')
     ..addOption('ip', help: 'IP address of the light')
@@ -154,7 +186,8 @@ void main(List<String> arguments) async {
   try {
     switch (command.name) {
       case 'discover':
-        var timeout = int.tryParse(command['timeout'] as String) ??
+        var timeout =
+            int.tryParse(command['timeout'] as String) ??
             cliDefaultDiscoveryTimeoutSeconds;
         await discoverCommand(timeout: timeout, save: command['save'] as bool);
 
@@ -162,14 +195,15 @@ void main(List<String> arguments) async {
         await listCommand();
 
       case 'status':
-        var statusTarget =
-            requireTarget(command, '$cliName status -t <light>');
+        var statusTarget = requireTarget(command, '$cliName status -t <light>');
         if (statusTarget == null) return;
         await statusCommand(statusTarget);
 
       case 'on':
-        var onTarget =
-            requireTarget(command, '$cliName on -t <light> [--brightness N]');
+        var onTarget = requireTarget(
+          command,
+          '$cliName on -t <light> [--brightness N]',
+        );
         if (onTarget == null) return;
         var onBrightness = command['brightness'] != null
             ? int.tryParse(command['brightness'] as String)
@@ -182,14 +216,15 @@ void main(List<String> arguments) async {
         await offCommand(offTarget);
 
       case 'toggle':
-        var toggleTarget =
-            requireTarget(command, '$cliName toggle -t <light>');
+        var toggleTarget = requireTarget(command, '$cliName toggle -t <light>');
         if (toggleTarget == null) return;
         await toggleCommand(toggleTarget);
 
       case 'brightness':
         var brightnessTarget = requireTarget(
-            command, '$cliName brightness -t <light> -b <percent>');
+          command,
+          '$cliName brightness -t <light> -b <percent>',
+        );
         if (brightnessTarget == null) return;
         var valueStr = command['value'] as String?;
         if (valueStr == null) {
@@ -208,20 +243,24 @@ void main(List<String> arguments) async {
 
       case 'color':
         var colorTarget = requireTarget(
-            command, '$cliName color -t <light> -c <R,G,B> [--brightness N]');
+          command,
+          '$cliName color -t <light> -c <R,G,B> [--brightness N]',
+        );
         if (colorTarget == null) return;
         var rgbStr = command['rgb'] as String?;
         if (rgbStr == null) {
           stderr.writeln('Error: --rgb/-c is required.');
           stderr.writeln(
-              'Usage: $cliName color -t <light> -c <R,G,B> [--brightness N]');
+            'Usage: $cliName color -t <light> -c <R,G,B> [--brightness N]',
+          );
           exitCode = 1;
           return;
         }
         var parts = rgbStr.split(',');
         if (parts.length != 3) {
           stderr.writeln(
-              'Error: RGB must be in format R,G,B (e.g., 255,100,50).');
+            'Error: RGB must be in format R,G,B (e.g., 255,100,50).',
+          );
           exitCode = 1;
           return;
         }
@@ -240,13 +279,16 @@ void main(List<String> arguments) async {
 
       case 'temp':
         var tempTarget = requireTarget(
-            command, '$cliName temp -t <light> -k <kelvin> [--brightness N]');
+          command,
+          '$cliName temp -t <light> -k <kelvin> [--brightness N]',
+        );
         if (tempTarget == null) return;
         var kelvinStr = command['kelvin'] as String?;
         if (kelvinStr == null) {
           stderr.writeln('Error: --kelvin/-k is required.');
           stderr.writeln(
-              'Usage: $cliName temp -t <light> -k <kelvin> [--brightness N]');
+            'Usage: $cliName temp -t <light> -k <kelvin> [--brightness N]',
+          );
           exitCode = 1;
           return;
         }
@@ -262,14 +304,17 @@ void main(List<String> arguments) async {
         await tempCommand(tempTarget, kelvin, brightness: tempBrightness);
 
       case 'scene':
-        var sceneTarget = requireTarget(command,
-            '$cliName scene -t <light> -s <scene_name> [--brightness N]');
+        var sceneTarget = requireTarget(
+          command,
+          '$cliName scene -t <light> -s <scene_name> [--brightness N]',
+        );
         if (sceneTarget == null) return;
         var sceneName = command['scene'] as String?;
         if (sceneName == null) {
           stderr.writeln('Error: --scene/-s is required.');
           stderr.writeln(
-              'Usage: $cliName scene -t <light> -s <scene_name> [--brightness N]');
+            'Usage: $cliName scene -t <light> -s <scene_name> [--brightness N]',
+          );
           exitCode = 1;
           return;
         }

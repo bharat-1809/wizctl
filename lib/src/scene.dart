@@ -53,32 +53,31 @@ enum WizScene {
 
   /// Animated scenes that support speed control.
   bool get isDynamic => switch (this) {
-        ocean ||
-        romance ||
-        sunset ||
-        party ||
-        fireplace ||
-        forest ||
-        pastelColors ||
-        wakeUp ||
-        bedtime ||
-        spring ||
-        summer ||
-        fall ||
-        deepDive ||
-        jungle ||
-        mojito ||
-        club ||
-        christmas ||
-        halloween ||
-        candlelight ||
-        pulse ||
-        diwali ||
-        alarm ||
-        rhythm =>
-          true,
-        _ => false,
-      };
+    ocean ||
+    romance ||
+    sunset ||
+    party ||
+    fireplace ||
+    forest ||
+    pastelColors ||
+    wakeUp ||
+    bedtime ||
+    spring ||
+    summer ||
+    fall ||
+    deepDive ||
+    jungle ||
+    mojito ||
+    club ||
+    christmas ||
+    halloween ||
+    candlelight ||
+    pulse ||
+    diwali ||
+    alarm ||
+    rhythm => true,
+    _ => false,
+  };
 
   /// Whether this scene supports speed adjustment.
   bool get supportsSpeed => isDynamic;

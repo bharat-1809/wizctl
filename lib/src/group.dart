@@ -15,8 +15,11 @@ class GroupOperationResult {
   /// Error that occurred, if any.
   final Object? error;
 
-  const GroupOperationResult(
-      {required this.light, required this.success, this.error});
+  const GroupOperationResult({
+    required this.light,
+    required this.success,
+    this.error,
+  });
 
   @override
   String toString() =>
@@ -49,73 +52,109 @@ class WizGroup {
   WizGroup._();
 
   static Future<List<GroupOperationResult>> send(
-      List<WizLight> lights, ControlSignal signal) async {
+    List<WizLight> lights,
+    ControlSignal signal,
+  ) async {
     return _executeOnAll(lights, (light) => light.send(signal));
   }
 
-  static Future<List<GroupOperationResult>> turnOn(List<WizLight> lights,
-      {int? brightness}) async {
+  static Future<List<GroupOperationResult>> turnOn(
+    List<WizLight> lights, {
+    int? brightness,
+  }) async {
     return _executeOnAll(
-        lights, (light) => light.turnOn(brightness: brightness));
+      lights,
+      (light) => light.turnOn(brightness: brightness),
+    );
   }
 
   static Future<List<GroupOperationResult>> turnOff(
-      List<WizLight> lights) async {
+    List<WizLight> lights,
+  ) async {
     return _executeOnAll(lights, (light) => light.turnOff());
   }
 
   static Future<List<GroupOperationResult>> toggle(
-      List<WizLight> lights) async {
+    List<WizLight> lights,
+  ) async {
     return _executeOnAll(lights, (light) => light.toggle());
   }
 
   static Future<List<GroupOperationResult>> setBrightness(
-      List<WizLight> lights, int percent) async {
+    List<WizLight> lights,
+    int percent,
+  ) async {
     return _executeOnAll(lights, (light) => light.setBrightness(percent));
   }
 
   static Future<List<GroupOperationResult>> setColor(
-      List<WizLight> lights, int r, int g, int b,
-      {int? brightness}) async {
+    List<WizLight> lights,
+    int r,
+    int g,
+    int b, {
+    int? brightness,
+  }) async {
     return _executeOnAll(
-        lights, (light) => light.setColor(r, g, b, brightness: brightness));
+      lights,
+      (light) => light.setColor(r, g, b, brightness: brightness),
+    );
   }
 
   static Future<List<GroupOperationResult>> setTemperature(
-      List<WizLight> lights, int kelvin,
-      {int? brightness}) async {
-    return _executeOnAll(lights,
-        (light) => light.setTemperature(kelvin, brightness: brightness));
+    List<WizLight> lights,
+    int kelvin, {
+    int? brightness,
+  }) async {
+    return _executeOnAll(
+      lights,
+      (light) => light.setTemperature(kelvin, brightness: brightness),
+    );
   }
 
   static Future<List<GroupOperationResult>> setScene(
-      List<WizLight> lights, WizScene scene,
-      {int? brightness, int? speed}) async {
-    return _executeOnAll(lights,
-        (light) => light.setScene(scene, brightness: brightness, speed: speed));
+    List<WizLight> lights,
+    WizScene scene, {
+    int? brightness,
+    int? speed,
+  }) async {
+    return _executeOnAll(
+      lights,
+      (light) => light.setScene(scene, brightness: brightness, speed: speed),
+    );
   }
 
   static Future<List<GroupOperationResult>> setWarmWhite(
-      List<WizLight> lights, int value,
-      {int? brightness}) async {
+    List<WizLight> lights,
+    int value, {
+    int? brightness,
+  }) async {
     return _executeOnAll(
-        lights, (light) => light.setWarmWhite(value, brightness: brightness));
+      lights,
+      (light) => light.setWarmWhite(value, brightness: brightness),
+    );
   }
 
   static Future<List<GroupOperationResult>> setColdWhite(
-      List<WizLight> lights, int value,
-      {int? brightness}) async {
+    List<WizLight> lights,
+    int value, {
+    int? brightness,
+  }) async {
     return _executeOnAll(
-        lights, (light) => light.setColdWhite(value, brightness: brightness));
+      lights,
+      (light) => light.setColdWhite(value, brightness: brightness),
+    );
   }
 
   static Future<List<GroupOperationResult>> setSpeed(
-      List<WizLight> lights, int speed) async {
+    List<WizLight> lights,
+    int speed,
+  ) async {
     return _executeOnAll(lights, (light) => light.setSpeed(speed));
   }
 
   static Future<Map<WizLight, LightState?>> getStates(
-      List<WizLight> lights) async {
+    List<WizLight> lights,
+  ) async {
     var results = await Future.wait(
       lights.map((light) async {
         try {

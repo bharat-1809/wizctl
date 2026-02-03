@@ -9,7 +9,8 @@ Future<void> groupListCommand() async {
   if (config.groups.isEmpty) {
     stdout.writeln('No groups configured.');
     stdout.writeln(
-        'Use "wizctl group add <name> <lights...>" to create a group.');
+      'Use "wizctl group add <name> <lights...>" to create a group.',
+    );
     return;
   }
 

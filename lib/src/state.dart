@@ -104,21 +104,21 @@ class LightState {
   }
 
   Map<String, dynamic> toJson() => {
-        keyState: isOn,
-        if (dimming != null) keyDimming: dimming,
-        if (r != null) keyRed: r,
-        if (g != null) keyGreen: g,
-        if (b != null) keyBlue: b,
-        if (coldWhite != null) keyColdWhite: coldWhite,
-        if (warmWhite != null) keyWarmWhite: warmWhite,
-        if (temperature != null) keyTemperature: temperature,
-        if (sceneId != null) keySceneId: sceneId,
-        if (speed != null) keySpeed: speed,
-        if (ratio != null) keyRatio: ratio,
-        if (mac != null) keyMac: mac,
-        if (rssi != null) keyRssi: rssi,
-        if (source != null) keySource: source,
-      };
+    keyState: isOn,
+    if (dimming != null) keyDimming: dimming,
+    if (r != null) keyRed: r,
+    if (g != null) keyGreen: g,
+    if (b != null) keyBlue: b,
+    if (coldWhite != null) keyColdWhite: coldWhite,
+    if (warmWhite != null) keyWarmWhite: warmWhite,
+    if (temperature != null) keyTemperature: temperature,
+    if (sceneId != null) keySceneId: sceneId,
+    if (speed != null) keySpeed: speed,
+    if (ratio != null) keyRatio: ratio,
+    if (mac != null) keyMac: mac,
+    if (rssi != null) keyRssi: rssi,
+    if (source != null) keySource: source,
+  };
 
   @override
   String toString() {

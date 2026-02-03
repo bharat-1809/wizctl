@@ -14,14 +14,16 @@ class CliConfig {
   /// Map of group names to lists of IP addresses.
   final Map<String, List<String>> groups;
 
-  CliConfig(
-      {Map<String, LightConfig>? lights, Map<String, List<String>>? groups})
-      : lights = lights ?? {},
-        groups = groups ?? {};
+  CliConfig({
+    Map<String, LightConfig>? lights,
+    Map<String, List<String>>? groups,
+  }) : lights = lights ?? {},
+       groups = groups ?? {};
 
   /// Gets the config file path.
   static File get configFile {
-    var home = Platform.environment['HOME'] ??
+    var home =
+        Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '.';
     return File('$home/.config/$configDirName/$configFileName');
@@ -45,8 +47,9 @@ class CliConfig {
   Future<void> save() async {
     var file = configFile;
     await file.parent.create(recursive: true);
-    await file
-        .writeAsString(const JsonEncoder.withIndent('  ').convert(toJson()));
+    await file.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(toJson()),
+    );
   }
 
   factory CliConfig.fromJson(Map<String, dynamic> json) {
@@ -54,17 +57,20 @@ class CliConfig {
     var groupsJson = json['groups'] as Map<String, dynamic>? ?? {};
 
     return CliConfig(
-      lights: lightsJson.map((ip, data) =>
-          MapEntry(ip, LightConfig.fromJson(data as Map<String, dynamic>))),
-      groups: groupsJson
-          .map((name, ips) => MapEntry(name, List<String>.from(ips as List))),
+      lights: lightsJson.map(
+        (ip, data) =>
+            MapEntry(ip, LightConfig.fromJson(data as Map<String, dynamic>)),
+      ),
+      groups: groupsJson.map(
+        (name, ips) => MapEntry(name, List<String>.from(ips as List)),
+      ),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'lights': lights.map((ip, config) => MapEntry(ip, config.toJson())),
-        'groups': groups,
-      };
+    'lights': lights.map((ip, config) => MapEntry(ip, config.toJson())),
+    'groups': groups,
+  };
 
   void setAlias(String ip, String alias, {String? mac}) {
     lights[ip] = LightConfig(alias: alias, mac: mac ?? lights[ip]?.mac);
@@ -114,7 +120,7 @@ class LightConfig {
       LightConfig(alias: json['alias'] as String?, mac: json['mac'] as String?);
 
   Map<String, dynamic> toJson() => {
-        if (alias != null) 'alias': alias,
-        if (mac != null) 'mac': mac,
-      };
+    if (alias != null) 'alias': alias,
+    if (mac != null) 'mac': mac,
+  };
 }

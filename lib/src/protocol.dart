@@ -60,7 +60,8 @@ class WizProtocol {
     RetryConfig? retry,
   }) async {
     // Use default retry config if not provided (matches old behavior)
-    var retryConfig = retry ??
+    var retryConfig =
+        retry ??
         RetryConfig.exponential(
           count:
               maxSendDatagrams - 1, // -1 because first attempt is not a retry
@@ -92,7 +93,8 @@ class WizProtocol {
           if (datagram != null) {
             var responseText = utf8.decode(datagram.data);
             WizLogger.debug(
-                'Received from ${datagram.address.address}: $responseText');
+              'Received from ${datagram.address.address}: $responseText',
+            );
 
             try {
               var response = jsonDecode(responseText) as Map<String, dynamic>;
@@ -103,22 +105,26 @@ class WizProtocol {
                 var errorMsg = error['message'] as String? ?? 'Unknown error';
 
                 WizLogger.error(
-                    'Error response: code=$code, message=$errorMsg');
+                  'Error response: code=$code, message=$errorMsg',
+                );
 
                 if (code == errorCodeMethodNotFound) {
                   if (!completer.isCompleted) {
                     completer.completeError(
-                        WizMethodNotFoundError(method: method, ip: ip));
+                      WizMethodNotFoundError(method: method, ip: ip),
+                    );
                   }
                   return;
                 }
 
                 if (!completer.isCompleted) {
-                  completer.completeError(WizResponseError(
-                    'Error from light: $errorMsg',
-                    errorCode: code,
-                    rawResponse: responseText,
-                  ));
+                  completer.completeError(
+                    WizResponseError(
+                      'Error from light: $errorMsg',
+                      errorCode: code,
+                      rawResponse: responseText,
+                    ),
+                  );
                 }
                 return;
               }
@@ -131,11 +137,13 @@ class WizProtocol {
             } catch (e) {
               WizLogger.error('Failed to parse response: $e');
               if (!completer.isCompleted) {
-                completer.completeError(WizResponseError(
-                  'Failed to parse response from $ip',
-                  rawResponse: responseText,
-                  cause: e,
-                ));
+                completer.completeError(
+                  WizResponseError(
+                    'Failed to parse response from $ip',
+                    rawResponse: responseText,
+                    cause: e,
+                  ),
+                );
               }
             }
           }
@@ -150,13 +158,15 @@ class WizProtocol {
           attemptNumber++;
           var bytesSent = socket!.send(data, address, port);
           WizLogger.debug(
-              'Attempt $attemptNumber/$maxAttempts: sent $bytesSent bytes');
+            'Attempt $attemptNumber/$maxAttempts: sent $bytesSent bytes',
+          );
 
           if (bytesSent != data.length) {
             WizLogger.error('Incomplete send: $bytesSent/${data.length} bytes');
             if (!completer.isCompleted) {
               completer.completeError(
-                  WizConnectionError('Failed to send to $ip:$port'));
+                WizConnectionError('Failed to send to $ip:$port'),
+              );
             }
             return;
           }
@@ -168,7 +178,8 @@ class WizProtocol {
           attemptTimeoutTimer = Timer(timeout, () {
             if (!completer.isCompleted) {
               WizLogger.debug(
-                  'Attempt $attemptNumber timed out after ${timeout.inSeconds}s');
+                'Attempt $attemptNumber timed out after ${timeout.inSeconds}s',
+              );
               attemptTimedOut = true;
             }
           });
@@ -193,21 +204,28 @@ class WizProtocol {
           // If we timed out and have more retries, wait and retry
           if (attemptTimedOut && attemptNumber < maxAttempts) {
             WizLogger.verbose(
-                'Waiting ${currentRetryInterval.inMilliseconds}ms before retry');
+              'Waiting ${currentRetryInterval.inMilliseconds}ms before retry',
+            );
             await Future.delayed(currentRetryInterval);
 
             // Calculate next interval based on strategy
             if (retryConfig.strategy == RetryStrategy.exponential) {
-              currentRetryInterval =
-                  retryConfig.nextExponentialInterval(currentRetryInterval);
+              currentRetryInterval = retryConfig.nextExponentialInterval(
+                currentRetryInterval,
+              );
             }
             // For fixed strategy, currentRetryInterval stays the same
           } else if (attemptTimedOut) {
             // No more retries, fail with timeout
             WizLogger.error('Timeout after $attemptNumber attempts to $ip');
             if (!completer.isCompleted) {
-              completer.completeError(WizTimeoutError(
-                  ip: ip, timeout: timeout, retryCount: attemptNumber));
+              completer.completeError(
+                WizTimeoutError(
+                  ip: ip,
+                  timeout: timeout,
+                  retryCount: attemptNumber,
+                ),
+              );
             }
             break;
           }
@@ -216,8 +234,13 @@ class WizProtocol {
         // Ensure completer is always completed (safety check)
         if (!completer.isCompleted) {
           WizLogger.error('Timeout after $attemptNumber attempts to $ip');
-          completer.completeError(WizTimeoutError(
-              ip: ip, timeout: timeout, retryCount: attemptNumber));
+          completer.completeError(
+            WizTimeoutError(
+              ip: ip,
+              timeout: timeout,
+              retryCount: attemptNumber,
+            ),
+          );
         }
       }
 
@@ -233,11 +256,19 @@ class WizProtocol {
           onTimeout: () {
             // This should never happen, but ensure we always return
             if (!completer.isCompleted) {
-              completer.completeError(WizTimeoutError(
-                  ip: ip, timeout: timeout, retryCount: attemptNumber));
+              completer.completeError(
+                WizTimeoutError(
+                  ip: ip,
+                  timeout: timeout,
+                  retryCount: attemptNumber,
+                ),
+              );
             }
             throw WizTimeoutError(
-                ip: ip, timeout: timeout, retryCount: attemptNumber);
+              ip: ip,
+              timeout: timeout,
+              retryCount: attemptNumber,
+            );
           },
         );
         return result;
@@ -286,7 +317,7 @@ class WizProtocol {
   ///
   /// Used for discovery where multiple lights may respond.
   static Future<List<(Map<String, dynamic>, InternetAddress)>>
-      collectResponses({
+  collectResponses({
     required RawDatagramSocket socket,
     required Duration timeout,
   }) async {
@@ -301,7 +332,8 @@ class WizProtocol {
         if (datagram != null) {
           var responseText = utf8.decode(datagram.data);
           WizLogger.debug(
-              'Response from ${datagram.address.address}: $responseText');
+            'Response from ${datagram.address.address}: $responseText',
+          );
 
           try {
             var response = jsonDecode(responseText) as Map<String, dynamic>;

@@ -56,11 +56,7 @@ void main() {
   group('LightState', () {
     test('fromJson parses basic state', () {
       var json = {
-        'result': {
-          'state': true,
-          'dimming': 75,
-          'mac': 'aabbccddeeff',
-        },
+        'result': {'state': true, 'dimming': 75, 'mac': 'aabbccddeeff'},
       };
 
       var state = LightState.fromJson(json);
@@ -73,13 +69,7 @@ void main() {
 
     test('fromJson parses RGB mode', () {
       var json = {
-        'result': {
-          'state': true,
-          'r': 255,
-          'g': 100,
-          'b': 50,
-          'dimming': 80,
-        },
+        'result': {'state': true, 'r': 255, 'g': 100, 'b': 50, 'dimming': 80},
       };
 
       var state = LightState.fromJson(json);
@@ -92,11 +82,7 @@ void main() {
 
     test('fromJson parses temperature mode', () {
       var json = {
-        'result': {
-          'state': true,
-          'temp': 3000,
-          'dimming': 60,
-        },
+        'result': {'state': true, 'temp': 3000, 'dimming': 60},
       };
 
       var state = LightState.fromJson(json);
@@ -107,11 +93,7 @@ void main() {
 
     test('fromJson parses scene mode', () {
       var json = {
-        'result': {
-          'state': true,
-          'sceneId': 6,
-          'dimming': 100,
-        },
+        'result': {'state': true, 'sceneId': 6, 'dimming': 100},
       };
 
       var state = LightState.fromJson(json);
@@ -123,12 +105,7 @@ void main() {
 
     test('fromJson parses speed and ratio', () {
       var json = {
-        'result': {
-          'state': true,
-          'sceneId': 1,
-          'speed': 150,
-          'ratio': 50,
-        },
+        'result': {'state': true, 'sceneId': 1, 'speed': 150, 'ratio': 50},
       };
 
       var state = LightState.fromJson(json);
@@ -139,9 +116,7 @@ void main() {
 
     test('handles off state', () {
       var json = {
-        'result': {
-          'state': false,
-        },
+        'result': {'state': false},
       };
 
       var state = LightState.fromJson(json);
@@ -175,10 +150,7 @@ void main() {
   group('DiscoveredLight', () {
     test('fromJson parses discovery response', () {
       var json = {
-        'result': {
-          'mac': 'aabbccddeeff',
-          'moduleName': 'ESP01_SHRGB1C_31',
-        },
+        'result': {'mac': 'aabbccddeeff', 'moduleName': 'ESP01_SHRGB1C_31'},
       };
 
       var light = DiscoveredLight.fromJson(json, '192.168.1.100');
@@ -202,7 +174,9 @@ void main() {
   group('BulbClass', () {
     test('fromModuleName parses RGB bulb', () {
       expect(
-          BulbClass.fromModuleName('ESP01_SHRGB1C_31'), equals(BulbClass.rgb));
+        BulbClass.fromModuleName('ESP01_SHRGB1C_31'),
+        equals(BulbClass.rgb),
+      );
       expect(BulbClass.fromModuleName('ESP01_DHRGB_31'), equals(BulbClass.rgb));
     });
 
@@ -215,13 +189,17 @@ void main() {
     });
 
     test('fromModuleName parses socket', () {
-      expect(BulbClass.fromModuleName('ESP03_SOCKET_01'),
-          equals(BulbClass.socket));
+      expect(
+        BulbClass.fromModuleName('ESP03_SOCKET_01'),
+        equals(BulbClass.socket),
+      );
     });
 
     test('fromModuleName parses fan dimmer', () {
-      expect(BulbClass.fromModuleName('ESP14_FANDIM_01'),
-          equals(BulbClass.fanDim));
+      expect(
+        BulbClass.fromModuleName('ESP14_FANDIM_01'),
+        equals(BulbClass.fanDim),
+      );
     });
 
     test('fromModuleName returns null for unknown', () {
@@ -297,11 +275,15 @@ void main() {
       expect(ControlSignal.on().toJson(), equals({'state': true}));
       expect(ControlSignal.off().toJson(), equals({'state': false}));
       expect(ControlSignal.brightness(50).toJson(), equals({'dimming': 50}));
-      expect(ControlSignal.rgb(255, 0, 0).toJson(),
-          equals({'r': 255, 'g': 0, 'b': 0}));
+      expect(
+        ControlSignal.rgb(255, 0, 0).toJson(),
+        equals({'r': 255, 'g': 0, 'b': 0}),
+      );
       expect(ControlSignal.temperature(4000).toJson(), equals({'temp': 4000}));
       expect(
-          ControlSignal.scene(WizScene.cozy).toJson(), equals({'sceneId': 6}));
+        ControlSignal.scene(WizScene.cozy).toJson(),
+        equals({'sceneId': 6}),
+      );
       expect(ControlSignal.warmWhite(128).toJson(), equals({'w': 128}));
       expect(ControlSignal.coldWhite(128).toJson(), equals({'c': 128}));
       expect(ControlSignal.speed(150).toJson(), equals({'speed': 150}));
@@ -318,25 +300,37 @@ void main() {
     test('validates brightness range', () {
       expect(() => ControlSignal(dimming: 5), throwsA(isA<WizArgumentError>()));
       expect(
-          () => ControlSignal(dimming: 101), throwsA(isA<WizArgumentError>()));
+        () => ControlSignal(dimming: 101),
+        throwsA(isA<WizArgumentError>()),
+      );
       expect(() => ControlSignal(dimming: 10), returnsNormally);
       expect(() => ControlSignal(dimming: 100), returnsNormally);
     });
 
     test('validates RGB range', () {
-      expect(() => ControlSignal(r: -1, g: 0, b: 0),
-          throwsA(isA<WizArgumentError>()));
-      expect(() => ControlSignal(r: 0, g: 256, b: 0),
-          throwsA(isA<WizArgumentError>()));
-      expect(() => ControlSignal(r: 0, g: 0, b: 300),
-          throwsA(isA<WizArgumentError>()));
+      expect(
+        () => ControlSignal(r: -1, g: 0, b: 0),
+        throwsA(isA<WizArgumentError>()),
+      );
+      expect(
+        () => ControlSignal(r: 0, g: 256, b: 0),
+        throwsA(isA<WizArgumentError>()),
+      );
+      expect(
+        () => ControlSignal(r: 0, g: 0, b: 300),
+        throwsA(isA<WizArgumentError>()),
+      );
     });
 
     test('validates temperature range', () {
-      expect(() => ControlSignal(temperature: 500),
-          throwsA(isA<WizArgumentError>()));
-      expect(() => ControlSignal(temperature: 15000),
-          throwsA(isA<WizArgumentError>()));
+      expect(
+        () => ControlSignal(temperature: 500),
+        throwsA(isA<WizArgumentError>()),
+      );
+      expect(
+        () => ControlSignal(temperature: 15000),
+        throwsA(isA<WizArgumentError>()),
+      );
       expect(() => ControlSignal(temperature: 2200), returnsNormally);
       expect(() => ControlSignal(temperature: 6500), returnsNormally);
     });
@@ -344,7 +338,9 @@ void main() {
     test('validates scene ID range', () {
       expect(() => ControlSignal(sceneId: 0), throwsA(isA<WizArgumentError>()));
       expect(
-          () => ControlSignal(sceneId: 36), throwsA(isA<WizArgumentError>()));
+        () => ControlSignal(sceneId: 36),
+        throwsA(isA<WizArgumentError>()),
+      );
       expect(() => ControlSignal(sceneId: 1), returnsNormally);
       expect(() => ControlSignal(sceneId: 35), returnsNormally);
       expect(() => ControlSignal(sceneId: 1000), returnsNormally); // rhythm
@@ -392,23 +388,14 @@ void main() {
     test('validates brightness in setBrightness', () {
       var light = WizLight('192.168.1.100');
 
-      expect(
-        () => light.setBrightness(5),
-        throwsA(isA<WizArgumentError>()),
-      );
-      expect(
-        () => light.setBrightness(101),
-        throwsA(isA<WizArgumentError>()),
-      );
+      expect(() => light.setBrightness(5), throwsA(isA<WizArgumentError>()));
+      expect(() => light.setBrightness(101), throwsA(isA<WizArgumentError>()));
     });
 
     test('validates temperature in setTemperature', () {
       var light = WizLight('192.168.1.100');
 
-      expect(
-        () => light.setTemperature(500),
-        throwsA(isA<WizArgumentError>()),
-      );
+      expect(() => light.setTemperature(500), throwsA(isA<WizArgumentError>()));
       expect(
         () => light.setTemperature(15000),
         throwsA(isA<WizArgumentError>()),
@@ -418,14 +405,8 @@ void main() {
     test('validates speed in setSpeed', () {
       var light = WizLight('192.168.1.100');
 
-      expect(
-        () => light.setSpeed(5),
-        throwsA(isA<WizArgumentError>()),
-      );
-      expect(
-        () => light.setSpeed(250),
-        throwsA(isA<WizArgumentError>()),
-      );
+      expect(() => light.setSpeed(5), throwsA(isA<WizArgumentError>()));
+      expect(() => light.setSpeed(250), throwsA(isA<WizArgumentError>()));
     });
   });
 
@@ -549,10 +530,7 @@ void main() {
     });
 
     test('fixed() factory creates fixed interval config', () {
-      var config = RetryConfig.fixed(
-        count: 5,
-        interval: Duration(seconds: 1),
-      );
+      var config = RetryConfig.fixed(count: 5, interval: Duration(seconds: 1));
 
       expect(config.count, equals(5));
       expect(config.strategy, equals(RetryStrategy.fixed));
@@ -562,69 +540,77 @@ void main() {
     });
 
     test(
-        'exponential() factory creates exponential config with default maxInterval',
-        () {
-      var config = RetryConfig.exponential(
-        count: 5,
-        initialInterval: Duration(milliseconds: 500),
-      );
+      'exponential() factory creates exponential config with default maxInterval',
+      () {
+        var config = RetryConfig.exponential(
+          count: 5,
+          initialInterval: Duration(milliseconds: 500),
+        );
 
-      expect(config.count, equals(5));
-      expect(config.strategy, equals(RetryStrategy.exponential));
-      expect(config.interval, equals(Duration(milliseconds: 500)));
-      expect(config.maxInterval, equals(Duration(seconds: 3)));
-      expect(config.enabled, isTrue);
-    });
+        expect(config.count, equals(5));
+        expect(config.strategy, equals(RetryStrategy.exponential));
+        expect(config.interval, equals(Duration(milliseconds: 500)));
+        expect(config.maxInterval, equals(Duration(seconds: 3)));
+        expect(config.enabled, isTrue);
+      },
+    );
 
     test(
-        'exponential() factory creates exponential config with custom maxInterval',
-        () {
-      var config = RetryConfig.exponential(
-        count: 3,
-        initialInterval: Duration(milliseconds: 250),
-        maxInterval: Duration(seconds: 2),
-      );
+      'exponential() factory creates exponential config with custom maxInterval',
+      () {
+        var config = RetryConfig.exponential(
+          count: 3,
+          initialInterval: Duration(milliseconds: 250),
+          maxInterval: Duration(seconds: 2),
+        );
 
-      expect(config.count, equals(3));
-      expect(config.strategy, equals(RetryStrategy.exponential));
-      expect(config.interval, equals(Duration(milliseconds: 250)));
-      expect(config.maxInterval, equals(Duration(seconds: 2)));
-    });
+        expect(config.count, equals(3));
+        expect(config.strategy, equals(RetryStrategy.exponential));
+        expect(config.interval, equals(Duration(milliseconds: 250)));
+        expect(config.maxInterval, equals(Duration(seconds: 2)));
+      },
+    );
 
     test('enabled returns true when count > 0', () {
       expect(RetryConfig.none().enabled, isFalse);
       expect(
-          RetryConfig.fixed(count: 1, interval: Duration(seconds: 1)).enabled,
-          isTrue);
-      expect(
-          RetryConfig.fixed(count: 0, interval: Duration(seconds: 1)).enabled,
-          isFalse);
-    });
-
-    test('nextExponentialInterval doubles interval for exponential strategy',
-        () {
-      var config = RetryConfig.exponential(
-        count: 5,
-        initialInterval: Duration(milliseconds: 500),
-        maxInterval: Duration(seconds: 5),
+        RetryConfig.fixed(count: 1, interval: Duration(seconds: 1)).enabled,
+        isTrue,
       );
-
-      var current = config.interval;
-      expect(current, equals(Duration(milliseconds: 500)));
-
-      current = config.nextExponentialInterval(current);
-      expect(current, equals(Duration(milliseconds: 1000)));
-
-      current = config.nextExponentialInterval(current);
-      expect(current, equals(Duration(milliseconds: 2000)));
-
-      current = config.nextExponentialInterval(current);
-      expect(current, equals(Duration(milliseconds: 4000)));
-
-      current = config.nextExponentialInterval(current);
-      expect(current,
-          equals(Duration(milliseconds: 5000))); // Capped at maxInterval
+      expect(
+        RetryConfig.fixed(count: 0, interval: Duration(seconds: 1)).enabled,
+        isFalse,
+      );
     });
+
+    test(
+      'nextExponentialInterval doubles interval for exponential strategy',
+      () {
+        var config = RetryConfig.exponential(
+          count: 5,
+          initialInterval: Duration(milliseconds: 500),
+          maxInterval: Duration(seconds: 5),
+        );
+
+        var current = config.interval;
+        expect(current, equals(Duration(milliseconds: 500)));
+
+        current = config.nextExponentialInterval(current);
+        expect(current, equals(Duration(milliseconds: 1000)));
+
+        current = config.nextExponentialInterval(current);
+        expect(current, equals(Duration(milliseconds: 2000)));
+
+        current = config.nextExponentialInterval(current);
+        expect(current, equals(Duration(milliseconds: 4000)));
+
+        current = config.nextExponentialInterval(current);
+        expect(
+          current,
+          equals(Duration(milliseconds: 5000)),
+        ); // Capped at maxInterval
+      },
+    );
 
     test('nextExponentialInterval respects maxInterval cap', () {
       var config = RetryConfig.exponential(
@@ -643,10 +629,7 @@ void main() {
     });
 
     test('nextExponentialInterval returns interval for fixed strategy', () {
-      var config = RetryConfig.fixed(
-        count: 5,
-        interval: Duration(seconds: 2),
-      );
+      var config = RetryConfig.fixed(count: 5, interval: Duration(seconds: 2));
 
       var result = config.nextExponentialInterval(Duration(seconds: 5));
       // Should return the fixed interval, not the current interval
@@ -692,12 +675,9 @@ void main() {
     });
 
     test('factory constructors create distinct instances', () {
-      var config1 =
-          RetryConfig.fixed(count: 5, interval: Duration(seconds: 1));
-      var config2 =
-          RetryConfig.fixed(count: 5, interval: Duration(seconds: 1));
-      var config3 =
-          RetryConfig.fixed(count: 3, interval: Duration(seconds: 1));
+      var config1 = RetryConfig.fixed(count: 5, interval: Duration(seconds: 1));
+      var config2 = RetryConfig.fixed(count: 5, interval: Duration(seconds: 1));
+      var config3 = RetryConfig.fixed(count: 3, interval: Duration(seconds: 1));
       var config4 = RetryConfig.exponential(
         count: 5,
         initialInterval: Duration(seconds: 1),
@@ -730,22 +710,23 @@ void main() {
     });
 
     test(
-        'exponential config with different maxInterval have different properties',
-        () {
-      var config1 = RetryConfig.exponential(
-        count: 5,
-        initialInterval: Duration(milliseconds: 500),
-        maxInterval: Duration(seconds: 2),
-      );
-      var config2 = RetryConfig.exponential(
-        count: 5,
-        initialInterval: Duration(milliseconds: 500),
-        maxInterval: Duration(seconds: 3),
-      );
+      'exponential config with different maxInterval have different properties',
+      () {
+        var config1 = RetryConfig.exponential(
+          count: 5,
+          initialInterval: Duration(milliseconds: 500),
+          maxInterval: Duration(seconds: 2),
+        );
+        var config2 = RetryConfig.exponential(
+          count: 5,
+          initialInterval: Duration(milliseconds: 500),
+          maxInterval: Duration(seconds: 3),
+        );
 
-      expect(config1.count, equals(config2.count));
-      expect(config1.interval, equals(config2.interval));
-      expect(config1.maxInterval, isNot(equals(config2.maxInterval)));
-    });
+        expect(config1.count, equals(config2.count));
+        expect(config1.interval, equals(config2.interval));
+        expect(config1.maxInterval, isNot(equals(config2.maxInterval)));
+      },
+    );
   });
 }

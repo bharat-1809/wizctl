@@ -48,10 +48,10 @@ class RetryConfig {
 
   /// No retries - single attempt only.
   const RetryConfig.none()
-      : count = 0,
-        strategy = RetryStrategy.fixed,
-        interval = Duration.zero,
-        maxInterval = null;
+    : count = 0,
+      strategy = RetryStrategy.fixed,
+      interval = Duration.zero,
+      maxInterval = null;
 
   /// Fixed interval retry strategy.
   ///
@@ -60,11 +60,9 @@ class RetryConfig {
   ///
   /// [count] - Number of retry attempts (total attempts = count + 1).
   /// [interval] - Time between each retry attempt.
-  const RetryConfig.fixed({
-    required this.count,
-    required this.interval,
-  })  : strategy = RetryStrategy.fixed,
-        maxInterval = null;
+  const RetryConfig.fixed({required this.count, required this.interval})
+    : strategy = RetryStrategy.fixed,
+      maxInterval = null;
 
   /// Exponential backoff retry strategy.
   ///
@@ -79,9 +77,9 @@ class RetryConfig {
     required this.count,
     required Duration initialInterval,
     Duration? maxInterval,
-  })  : strategy = RetryStrategy.exponential,
-        interval = initialInterval,
-        maxInterval = maxInterval ?? const Duration(seconds: 3);
+  }) : strategy = RetryStrategy.exponential,
+       interval = initialInterval,
+       maxInterval = maxInterval ?? const Duration(seconds: 3);
 
   /// Whether retries are enabled (count > 0).
   bool get enabled => count > 0;
