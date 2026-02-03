@@ -7,7 +7,7 @@ const int wizPort = 38899;
 
 /// Default timeout for UDP operations (per-attempt timeout for protocol requests).
 ///
-/// This timeout applies to each individual retry attempt in [WizProtocol.send].
+/// This timeout applies to each individual retry attempt in `WizProtocol.send`.
 /// Each attempt waits for this full duration before timing out and retrying.
 /// Total operation time = timeout * (attempts) + retry_intervals.
 const Duration defaultTimeout = Duration(seconds: 3);

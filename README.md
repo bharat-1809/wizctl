@@ -1,7 +1,7 @@
 # wizctl
 
 [![Pub Version](https://img.shields.io/pub/v/wizctl?color=blue)](https://pub.dev/packages/wizctl)
-[![Dart SDK](https://img.shields.io/badge/Dart-%3E%3D3.9.2-blue?logo=dart)](https://dart.dev)
+[![Dart SDK](https://img.shields.io/badge/Dart-%3E%3D3.9.0-blue?logo=dart)](https://dart.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 Control your Philips WiZ smart lights via CLI or an App.
