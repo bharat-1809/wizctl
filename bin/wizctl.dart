@@ -11,6 +11,7 @@ import 'cli/commands/control.dart';
 import 'cli/commands/discover.dart';
 import 'cli/commands/group.dart';
 import 'cli/commands/status.dart';
+import 'cli/config.dart';
 
 /// Adds --target option to a command parser and returns it for chaining.
 ArgParser addTargetOption(ArgParser parser) {
@@ -143,12 +144,21 @@ void main(List<String> arguments) async {
 
   var groupParser = parser.addCommand('group');
   groupParser.addCommand('list');
-  groupParser
-      .addCommand('add')
-      .addOption('name', abbr: 'n', help: 'Group name');
+  groupParser.addCommand('add')
+    ..addOption('name', abbr: 'n', help: 'Group name')
+    ..addOption('lights', abbr: 'l', help: 'Comma-separated list of lights');
   groupParser
       .addCommand('remove')
       .addOption('name', abbr: 'n', help: 'Group name to remove');
+
+  var configParser = parser.addCommand('config');
+  configParser.addCommand('clear').addFlag(
+    'force',
+    abbr: 'f',
+    negatable: false,
+    help: 'Skip confirmation prompt',
+  );
+  configParser.addCommand('path');
 
   ArgResults results;
   try {
@@ -340,6 +350,9 @@ void main(List<String> arguments) async {
       case 'group':
         await handleGroupCommand(command);
 
+      case 'config':
+        await handleConfigCommand(command);
+
       default:
         stderr.writeln('Unknown command: ${command.name}');
         printUsage();
@@ -364,20 +377,33 @@ Future<void> handleGroupCommand(ArgResults command) async {
       await groupListCommand();
 
     case 'add':
-      var groupName = subcommand['name'] as String?;
+      // Syntax: group add -n <name> -l <light1,light2,...>
+      var groupName = getOptionWithRest(subcommand, 'name');
       if (groupName == null) {
         stderr.writeln('Error: --name/-n is required.');
-        stderr.writeln('Usage: $cliName group add -n <name> <lights...>');
+        stderr.writeln(
+          'Usage: $cliName group add -n <name> -l <light1,light2,...>',
+        );
         exitCode = 1;
         return;
       }
-      if (subcommand.rest.isEmpty) {
+      var lightsStr = subcommand['lights'] as String?;
+      if (lightsStr == null || lightsStr.isEmpty) {
+        stderr.writeln('Error: --lights/-l is required.');
+        stderr.writeln(
+          'Usage: $cliName group add -n <name> -l <light1,light2,...>',
+        );
+        exitCode = 1;
+        return;
+      }
+      var lights =
+          lightsStr.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      if (lights.isEmpty) {
         stderr.writeln('Error: At least one light is required.');
-        stderr.writeln('Usage: $cliName group add -n <name> <lights...>');
         exitCode = 1;
         return;
       }
-      await groupAddCommand(groupName, subcommand.rest.toList());
+      await groupAddCommand(groupName, lights);
 
     case 'remove':
       var groupName = getOptionWithRest(subcommand, 'name');
@@ -393,6 +419,60 @@ Future<void> handleGroupCommand(ArgResults command) async {
       stderr.writeln('Unknown group subcommand: ${subcommand.name}');
       exitCode = 1;
   }
+}
+
+Future<void> handleConfigCommand(ArgResults command) async {
+  if (command.command == null) {
+    stderr.writeln('Usage: $cliName config <clear|path>');
+    exitCode = 1;
+    return;
+  }
+
+  var subcommand = command.command!;
+  switch (subcommand.name) {
+    case 'clear':
+      await configClearCommand(force: subcommand['force'] as bool);
+
+    case 'path':
+      configPathCommand();
+
+    default:
+      stderr.writeln('Unknown config subcommand: ${subcommand.name}');
+      exitCode = 1;
+  }
+}
+
+Future<void> configClearCommand({bool force = false}) async {
+  var config = await CliConfig.load();
+
+  if (config.lights.isEmpty && config.groups.isEmpty) {
+    stdout.writeln('Configuration is already empty.');
+    return;
+  }
+
+  if (!force) {
+    stdout.writeln('This will delete all saved lights, aliases, and groups:');
+    stdout.writeln('  ${config.lights.length} light(s)');
+    stdout.writeln('  ${config.groups.length} group(s)');
+    stdout.write('Are you sure? [y/N] ');
+
+    var response = stdin.readLineSync()?.toLowerCase() ?? '';
+    if (response != 'y' && response != 'yes') {
+      stdout.writeln('Aborted.');
+      return;
+    }
+  }
+
+  var deleted = await CliConfig.delete();
+  if (deleted) {
+    stdout.writeln('Configuration cleared.');
+  } else {
+    stdout.writeln('No configuration file found.');
+  }
+}
+
+void configPathCommand() {
+  stdout.writeln('Configuration file: ${CliConfig.configFile.path}');
 }
 
 void printUsage() {
@@ -431,8 +511,11 @@ Control (use -t/--target to specify light, alias, or group):
 Config:
   alias --ip <ip> -n <name>      Set alias for a light
   group list                     List groups
-  group add -n <name> <lights..> Create group
+  group add -n <name> -l <lights> Create group (lights: comma-separated)
   group remove -n <name>         Remove group
+  config clear                   Delete all saved config
+    --force, -f                  Skip confirmation
+  config path                    Show config file location
 
 Examples:
   $cliName discover --save
@@ -442,7 +525,7 @@ Examples:
   $cliName color -t "Living Room" -c 255,100,50
   $cliName temp -t Kitchen -k 4000
   $cliName scene -t all -s cozy
-  $cliName group add -n all "Living Room" Kitchen
+  $cliName group add -n "Living Room" -l "LL-Lamp,LL-1,LL-2"
   $cliName group remove -n all
   $cliName off -t all
   $cliName --debug status -t 192.168.1.100

@@ -99,6 +99,22 @@ class CliConfig {
 
   void removeGroup(String name) => groups.remove(name);
 
+  /// Clears all stored configuration (lights, aliases, and groups).
+  void clear() {
+    lights.clear();
+    groups.clear();
+  }
+
+  /// Deletes the configuration file from disk.
+  static Future<bool> delete() async {
+    var file = configFile;
+    if (await file.exists()) {
+      await file.delete();
+      return true;
+    }
+    return false;
+  }
+
   bool _isIpAddress(String value) {
     var parts = value.split('.');
     if (parts.length != 4) return false;

@@ -692,10 +692,15 @@ wizctl scene -t "Living Room" -s cozy
 # Aliases (use --ip and -n/--name flags)
 wizctl alias --ip 192.168.1.100 -n "Living Room"
 
-# Groups (use -n/--name flag for group name)
-wizctl group add -n all "Living Room" "Bedroom"
+# Groups
+wizctl group add -n "Living Room" -l "LL-Lamp,LL-1,LL-2"
 wizctl group remove -n all
 wizctl off -t all
+
+# Config management
+wizctl config path              # Show config file location
+wizctl config clear             # Delete all config (with confirmation)
+wizctl config clear --force     # Delete all config (no confirmation)
 
 # Debug
 wizctl --debug status -t 192.168.1.100
@@ -711,4 +716,14 @@ wizctl --debug status -t 192.168.1.100
 | `--kelvin` | `-k` | temp | Temperature in Kelvin (1000-10000) |
 | `--scene` | `-s` | scene | Scene name |
 | `--ip` | | alias | IP address of the light |
-| `--name` | `-n` | alias, group add/remove | Alias or group name |
+| `--name` | `-n` | alias, group add, group remove | Alias or group name |
+| `--lights` | `-l` | group add | Comma-separated list of lights |
+| `--force` | `-f` | config clear | Skip confirmation prompt |
+
+### Config Commands
+
+| Command | Description |
+|---------|-------------|
+| `config path` | Show the location of the config file |
+| `config clear` | Delete all saved lights, aliases, and groups (prompts for confirmation) |
+| `config clear --force` | Delete all config without confirmation |
