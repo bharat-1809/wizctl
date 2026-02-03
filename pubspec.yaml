@@ -1,15 +1,28 @@
 name: wizctl
-description: A starting point for Dart libraries or applications.
+description: >-
+  A Dart package for controlling Philips WiZ smart lights over local network UDP.
+  Provides discovery, control, scenes, and group management along with CLI support.
 version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+repository: https://github.com/bharat-1809/wizctl
+issue_tracker: https://github.com/bharat-1809/wizctl/issues
+documentation: https://github.com/bharat-1809/wizctl#README.md
+
+topics:
+  - iot
+  - smart-home
+  - philips-wiz
+  - lighting
+  - udp
 
 environment:
   sdk: ^3.9.2
 
-# Add regular dependencies here.
 dependencies:
-  # path: ^1.9.0
+  args: ^2.5.0
 
 dev_dependencies:
   lints: ^6.0.0
-  test: ^1.25.6
+  test: ^1.25.0
+
+executables:
+  wizctl: wizctl
