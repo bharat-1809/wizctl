@@ -4,19 +4,20 @@ import '../config.dart';
 
 /// Lists all groups.
 Future<void> groupListCommand() async {
-  final config = await CliConfig.load();
+  var config = await CliConfig.load();
 
   if (config.groups.isEmpty) {
     stdout.writeln('No groups configured.');
-    stdout.writeln('Use "wizctl group add <name> <lights...>" to create a group.');
+    stdout.writeln(
+        'Use "wizctl group add <name> <lights...>" to create a group.');
     return;
   }
 
   stdout.writeln('Configured groups:\n');
-  for (final entry in config.groups.entries) {
+  for (var entry in config.groups.entries) {
     stdout.writeln('  ${entry.key}:');
-    for (final ip in entry.value) {
-      final alias = config.getAlias(ip);
+    for (var ip in entry.value) {
+      var alias = config.getAlias(ip);
       if (alias != null) {
         stdout.writeln('    - $alias ($ip)');
       } else {
@@ -35,12 +36,12 @@ Future<void> groupAddCommand(String name, List<String> lights) async {
     return;
   }
 
-  final config = await CliConfig.load();
+  var config = await CliConfig.load();
 
   // Resolve aliases to IPs
-  final ips = <String>[];
-  for (final light in lights) {
-    final ip = config.resolveLight(light);
+  var ips = <String>[];
+  for (var light in lights) {
+    var ip = config.resolveLight(light);
     if (ip == null) {
       stderr.writeln('Error: Light "$light" not found.');
       exitCode = 1;
@@ -56,7 +57,7 @@ Future<void> groupAddCommand(String name, List<String> lights) async {
 
 /// Removes a group.
 Future<void> groupRemoveCommand(String name) async {
-  final config = await CliConfig.load();
+  var config = await CliConfig.load();
 
   if (!config.groups.containsKey(name)) {
     stderr.writeln('Error: Group "$name" not found.');

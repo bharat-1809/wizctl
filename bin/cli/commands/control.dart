@@ -6,14 +6,14 @@ import '../config.dart';
 
 /// Resolves a target to a list of WizLight objects.
 Future<List<WizLight>?> resolveLights(String target) async {
-  final config = await CliConfig.load();
+  var config = await CliConfig.load();
 
   // Check if it's a group
-  final groupIps = config.resolveGroup(target);
+  var groupIps = config.resolveGroup(target);
   if (groupIps != null) return groupIps.map((ip) => WizLight(ip)).toList();
 
   // Try to resolve as a single light
-  final ip = config.resolveLight(target);
+  var ip = config.resolveLight(target);
   if (ip == null) {
     stderr.writeln('Error: Light or group "$target" not found.');
     stderr.writeln('Use an IP address, alias, or group name.');
@@ -29,13 +29,13 @@ Future<void> executeOnLights(
   String actionName,
   Future<void> Function(WizLight light) action,
 ) async {
-  final lights = await resolveLights(target);
+  var lights = await resolveLights(target);
   if (lights == null) {
     exitCode = 1;
     return;
   }
 
-  final results = await Future.wait(
+  var results = await Future.wait(
     lights.map((light) async {
       try {
         await action(light);
@@ -47,7 +47,7 @@ Future<void> executeOnLights(
   );
 
   var hasError = false;
-  for (final (light, success, error) in results) {
+  for (var (light, success, error) in results) {
     if (success) {
       stdout.writeln('$actionName: ${light.ip}');
     } else {
@@ -61,7 +61,8 @@ Future<void> executeOnLights(
 
 /// Turns a light on.
 Future<void> onCommand(String target, {int? brightness}) async {
-  await executeOnLights(target, 'Turned on', (light) => light.turnOn(brightness: brightness));
+  await executeOnLights(
+      target, 'Turned on', (light) => light.turnOn(brightness: brightness));
 }
 
 /// Turns a light off.
@@ -81,19 +82,26 @@ Future<void> brightnessCommand(String target, int percent) async {
     exitCode = 1;
     return;
   }
-  await executeOnLights(target, 'Brightness set to $percent%', (light) => light.setBrightness(percent));
+  await executeOnLights(target, 'Brightness set to $percent%',
+      (light) => light.setBrightness(percent));
 }
 
 /// Sets RGB color.
-Future<void> colorCommand(String target, int r, int g, int b, {int? brightness}) async {
-  if (r < minColorValue || r > maxColorValue ||
-      g < minColorValue || g > maxColorValue ||
-      b < minColorValue || b > maxColorValue) {
-    stderr.writeln('Error: RGB values must be between $minColorValue and $maxColorValue.');
+Future<void> colorCommand(String target, int r, int g, int b,
+    {int? brightness}) async {
+  if (r < minColorValue ||
+      r > maxColorValue ||
+      g < minColorValue ||
+      g > maxColorValue ||
+      b < minColorValue ||
+      b > maxColorValue) {
+    stderr.writeln(
+        'Error: RGB values must be between $minColorValue and $maxColorValue.');
     exitCode = 1;
     return;
   }
-  await executeOnLights(target, 'Color set to RGB($r, $g, $b)', (light) => light.setColor(r, g, b, brightness: brightness));
+  await executeOnLights(target, 'Color set to RGB($r, $g, $b)',
+      (light) => light.setColor(r, g, b, brightness: brightness));
 }
 
 /// Sets color temperature.
@@ -103,25 +111,28 @@ Future<void> tempCommand(String target, int kelvin, {int? brightness}) async {
     exitCode = 1;
     return;
   }
-  await executeOnLights(target, 'Temperature set to ${kelvin}K', (light) => light.setTemperature(kelvin, brightness: brightness));
+  await executeOnLights(target, 'Temperature set to ${kelvin}K',
+      (light) => light.setTemperature(kelvin, brightness: brightness));
 }
 
 /// Applies a scene.
-Future<void> sceneCommand(String target, String sceneName, {int? brightness}) async {
-  final scene = WizScene.fromName(sceneName);
+Future<void> sceneCommand(String target, String sceneName,
+    {int? brightness}) async {
+  var scene = WizScene.fromName(sceneName);
   if (scene == null) {
     stderr.writeln('Error: Unknown scene "$sceneName".');
     stderr.writeln('Use "$cliName scenes" to list available scenes.');
     exitCode = 1;
     return;
   }
-  await executeOnLights(target, 'Scene set to ${scene.displayName}', (light) => light.setScene(scene, brightness: brightness));
+  await executeOnLights(target, 'Scene set to ${scene.displayName}',
+      (light) => light.setScene(scene, brightness: brightness));
 }
 
 /// Lists available scenes.
 void scenesCommand() {
   stdout.writeln('Available scenes:\n');
-  for (final scene in WizScene.values) {
+  for (var scene in WizScene.values) {
     stdout.writeln('  ${scene.name.padRight(15)} (${scene.displayName})');
   }
 }

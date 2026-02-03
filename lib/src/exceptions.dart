@@ -66,11 +66,12 @@ class WizResponseError extends WizException {
   @override
   final Object? cause;
 
-  WizResponseError(this.message, {this.rawResponse, this.errorCode, this.cause});
+  WizResponseError(this.message,
+      {this.rawResponse, this.errorCode, this.cause});
 
   @override
   String toString() {
-    final parts = <String>['WizResponseError: $message'];
+    var parts = <String>['WizResponseError: $message'];
     if (errorCode != null) parts.add('(code: $errorCode)');
     if (rawResponse != null) parts.add('(response: $rawResponse)');
     return parts.join(' ');

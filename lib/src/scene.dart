@@ -53,10 +53,30 @@ enum WizScene {
 
   /// Animated scenes that support speed control.
   bool get isDynamic => switch (this) {
-        ocean || romance || sunset || party || fireplace || forest ||
-        pastelColors || wakeUp || bedtime || spring || summer || fall ||
-        deepDive || jungle || mojito || club || christmas || halloween ||
-        candlelight || pulse || diwali || alarm || rhythm => true,
+        ocean ||
+        romance ||
+        sunset ||
+        party ||
+        fireplace ||
+        forest ||
+        pastelColors ||
+        wakeUp ||
+        bedtime ||
+        spring ||
+        summer ||
+        fall ||
+        deepDive ||
+        jungle ||
+        mojito ||
+        club ||
+        christmas ||
+        halloween ||
+        candlelight ||
+        pulse ||
+        diwali ||
+        alarm ||
+        rhythm =>
+          true,
         _ => false,
       };
 
@@ -67,7 +87,7 @@ enum WizScene {
   ///
   /// Returns `null` if no scene matches the given ID.
   static WizScene? fromId(int id) {
-    for (final scene in values) {
+    for (var scene in values) {
       if (scene.id == id) return scene;
     }
     return null;
@@ -78,10 +98,10 @@ enum WizScene {
   /// Matches against both the enum name and displayName.
   /// Returns `null` if no scene matches.
   static WizScene? fromName(String name) {
-    final lower = name.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
-    for (final scene in values) {
-      final enumName = scene.name.toLowerCase();
-      final displayLower = scene.displayName.toLowerCase().replaceAll(' ', '');
+    var lower = name.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+    for (var scene in values) {
+      var enumName = scene.name.toLowerCase();
+      var displayLower = scene.displayName.toLowerCase().replaceAll(' ', '');
       if (enumName == lower || displayLower == lower) return scene;
     }
     return null;

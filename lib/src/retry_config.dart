@@ -2,7 +2,7 @@
 enum RetryStrategy {
   /// Fixed interval between retries (e.g., every 1 second).
   fixed,
-  
+
   /// Exponential backoff - interval doubles after each retry, up to a maximum.
   exponential,
 }
@@ -29,13 +29,13 @@ enum RetryStrategy {
 class RetryConfig {
   /// Number of retry attempts. 0 means no retries (single attempt only).
   final int count;
-  
+
   /// The retry strategy to use.
   final RetryStrategy strategy;
-  
+
   /// Interval for fixed strategy, or initial interval for exponential strategy.
   final Duration interval;
-  
+
   /// Maximum interval for exponential backoff (ignored for fixed strategy).
   final Duration? maxInterval;
 
@@ -61,11 +61,9 @@ class RetryConfig {
   /// [count] - Number of retry attempts (total attempts = count + 1).
   /// [interval] - Time between each retry attempt.
   const RetryConfig.fixed({
-    required int count,
-    required Duration interval,
-  })  : count = count,
-        strategy = RetryStrategy.fixed,
-        interval = interval,
+    required this.count,
+    required this.interval,
+  })  : strategy = RetryStrategy.fixed,
         maxInterval = null;
 
   /// Exponential backoff retry strategy.
@@ -78,11 +76,10 @@ class RetryConfig {
   /// [initialInterval] - Interval before the first retry.
   /// [maxInterval] - Maximum interval cap (defaults to 3 seconds).
   const RetryConfig.exponential({
-    required int count,
+    required this.count,
     required Duration initialInterval,
     Duration? maxInterval,
-  })  : count = count,
-        strategy = RetryStrategy.exponential,
+  })  : strategy = RetryStrategy.exponential,
         interval = initialInterval,
         maxInterval = maxInterval ?? const Duration(seconds: 3);
 
@@ -96,7 +93,7 @@ class RetryConfig {
     if (strategy != RetryStrategy.exponential) {
       return interval;
     }
-    final maxMs = maxInterval?.inMilliseconds ?? double.maxFinite.toInt();
+    var maxMs = maxInterval?.inMilliseconds ?? double.maxFinite.toInt();
     return Duration(
       milliseconds: (currentInterval.inMilliseconds * 2).clamp(0, maxMs),
     );

@@ -106,7 +106,7 @@ class WizDiscovery {
       maxInterval: maxBackoff,
     );
 
-    final message = {
+    var message = {
       keyMethod: methodRegistration,
       keyParams: {
         'phoneMac': discoveryPhoneMac,
@@ -116,27 +116,28 @@ class WizDiscovery {
       },
     };
 
-    final socket = await WizProtocol.sendBroadcast(
+    var socket = await WizProtocol.sendBroadcast(
       ip: broadcastAddress,
       message: message,
       port: port,
     );
 
     try {
-      final lights = <DiscoveredLight>[];
-      final seenMacs = <String>{};
-      final completer = Completer<void>();
+      var lights = <DiscoveredLight>[];
+      var seenMacs = <String>{};
+      var completer = Completer<void>();
 
       // Listen for responses
-      final subscription = socket.listen((event) {
+      var subscription = socket.listen((event) {
         if (event == RawSocketEvent.read) {
-          final datagram = socket.receive();
+          var datagram = socket.receive();
           if (datagram != null) {
             try {
-              final responseText = utf8.decode(datagram.data);
-              final response = jsonDecode(responseText) as Map<String, dynamic>;
-              final light = DiscoveredLight.fromJson(response, datagram.address.address);
-              
+              var responseText = utf8.decode(datagram.data);
+              var response = jsonDecode(responseText) as Map<String, dynamic>;
+              var light =
+                  DiscoveredLight.fromJson(response, datagram.address.address);
+
               // Deduplicate by MAC address
               if (light.mac.isNotEmpty && !seenMacs.contains(light.mac)) {
                 seenMacs.add(light.mac);
@@ -150,7 +151,7 @@ class WizDiscovery {
       });
 
       // Send initial broadcast
-      final data = utf8.encode(jsonEncode(message));
+      var data = utf8.encode(jsonEncode(message));
       socket.send(data, InternetAddress(broadcastAddress), port);
 
       // Handle retries if configured
@@ -166,7 +167,7 @@ class WizDiscovery {
       }
 
       // Overall timeout (total window for collecting responses)
-      final timeoutTimer = Timer(timeout, () {
+      var timeoutTimer = Timer(timeout, () {
         if (!completer.isCompleted) completer.complete();
       });
 
@@ -195,14 +196,14 @@ class WizDiscovery {
 
     int attempt = 0;
     Duration currentInterval = retry.interval;
-    final startTime = DateTime.now();
+    var startTime = DateTime.now();
 
     void scheduleNext() {
       if (attempt >= retry.count) return;
 
       Timer(currentInterval, () {
         // Check if we're still within the timeout window
-        final elapsedNow = DateTime.now().difference(startTime);
+        var elapsedNow = DateTime.now().difference(startTime);
         if (elapsedNow >= timeout) {
           // Timeout expired, don't send more broadcasts
           return;
@@ -217,7 +218,7 @@ class WizDiscovery {
             currentInterval = retry.nextExponentialInterval(currentInterval);
           }
           // For fixed strategy, currentInterval stays the same
-          
+
           // Schedule next broadcast
           scheduleNext();
         }
@@ -278,24 +279,24 @@ class WizDiscovery {
     RetryConfig? retry,
     int port = wizPort,
   }) async {
-    final interfaces = await NetworkInterface.list(
+    var interfaces = await NetworkInterface.list(
       type: InternetAddressType.IPv4,
       includeLinkLocal: false,
     );
 
-    final allLights = <DiscoveredLight>[];
-    final seenMacs = <String>{};
+    var allLights = <DiscoveredLight>[];
+    var seenMacs = <String>{};
 
-    for (final _ in interfaces) {
+    for (var _ in interfaces) {
       try {
-        final lights = await discover(
+        var lights = await discover(
           broadcastAddress: defaultBroadcastAddress,
           timeout: timeout,
           retry: retry,
           port: port,
         );
-        
-        for (final light in lights) {
+
+        for (var light in lights) {
           if (!seenMacs.contains(light.mac)) {
             seenMacs.add(light.mac);
             allLights.add(light);

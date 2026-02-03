@@ -14,24 +14,27 @@ class CliConfig {
   /// Map of group names to lists of IP addresses.
   final Map<String, List<String>> groups;
 
-  CliConfig({Map<String, LightConfig>? lights, Map<String, List<String>>? groups})
+  CliConfig(
+      {Map<String, LightConfig>? lights, Map<String, List<String>>? groups})
       : lights = lights ?? {},
         groups = groups ?? {};
 
   /// Gets the config file path.
   static File get configFile {
-    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '.';
+    var home = Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '.';
     return File('$home/.config/$configDirName/$configFileName');
   }
 
   /// Loads the configuration from disk.
   static Future<CliConfig> load() async {
-    final file = configFile;
+    var file = configFile;
     if (!await file.exists()) return CliConfig();
 
     try {
-      final content = await file.readAsString();
-      final json = jsonDecode(content) as Map<String, dynamic>;
+      var content = await file.readAsString();
+      var json = jsonDecode(content) as Map<String, dynamic>;
       return CliConfig.fromJson(json);
     } catch (_) {
       return CliConfig();
@@ -40,18 +43,21 @@ class CliConfig {
 
   /// Saves the configuration to disk.
   Future<void> save() async {
-    final file = configFile;
+    var file = configFile;
     await file.parent.create(recursive: true);
-    await file.writeAsString(const JsonEncoder.withIndent('  ').convert(toJson()));
+    await file
+        .writeAsString(const JsonEncoder.withIndent('  ').convert(toJson()));
   }
 
   factory CliConfig.fromJson(Map<String, dynamic> json) {
-    final lightsJson = json['lights'] as Map<String, dynamic>? ?? {};
-    final groupsJson = json['groups'] as Map<String, dynamic>? ?? {};
+    var lightsJson = json['lights'] as Map<String, dynamic>? ?? {};
+    var groupsJson = json['groups'] as Map<String, dynamic>? ?? {};
 
     return CliConfig(
-      lights: lightsJson.map((ip, data) => MapEntry(ip, LightConfig.fromJson(data as Map<String, dynamic>))),
-      groups: groupsJson.map((name, ips) => MapEntry(name, List<String>.from(ips as List))),
+      lights: lightsJson.map((ip, data) =>
+          MapEntry(ip, LightConfig.fromJson(data as Map<String, dynamic>))),
+      groups: groupsJson
+          .map((name, ips) => MapEntry(name, List<String>.from(ips as List))),
     );
   }
 
@@ -72,7 +78,7 @@ class CliConfig {
   String? resolveLight(String aliasOrIp) {
     if (_isIpAddress(aliasOrIp)) return aliasOrIp;
 
-    for (final entry in lights.entries) {
+    for (var entry in lights.entries) {
       if (entry.value.alias?.toLowerCase() == aliasOrIp.toLowerCase()) {
         return entry.key;
       }
@@ -88,10 +94,10 @@ class CliConfig {
   void removeGroup(String name) => groups.remove(name);
 
   bool _isIpAddress(String value) {
-    final parts = value.split('.');
+    var parts = value.split('.');
     if (parts.length != 4) return false;
     return parts.every((part) {
-      final n = int.tryParse(part);
+      var n = int.tryParse(part);
       return n != null && n >= 0 && n <= 255;
     });
   }

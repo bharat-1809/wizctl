@@ -680,22 +680,35 @@ Commands:
 wizctl discover --save
 wizctl list
 
-# Control
-wizctl on "Living Room"
-wizctl off "Living Room"
-wizctl toggle "Living Room"
-wizctl brightness "Living Room" 75
-wizctl color "Living Room" 255 100 50
-wizctl temp "Living Room" 3000
-wizctl scene "Living Room" cozy
+# Control (use -t/--target to specify light, alias, or group)
+wizctl on -t "Living Room"
+wizctl off -t "Living Room"
+wizctl toggle -t "Living Room"
+wizctl brightness -t "Living Room" -b 75
+wizctl color -t "Living Room" -c 255,100,50
+wizctl temp -t "Living Room" -k 3000
+wizctl scene -t "Living Room" -s cozy
 
-# Aliases
-wizctl alias 192.168.1.100 "Living Room"
+# Aliases (use --ip and -n/--name flags)
+wizctl alias --ip 192.168.1.100 -n "Living Room"
 
-# Groups
-wizctl group add all "Living Room" "Bedroom"
-wizctl on all
+# Groups (use -n/--name flag for group name)
+wizctl group add -n all "Living Room" "Bedroom"
+wizctl group remove -n all
+wizctl off -t all
 
 # Debug
-wizctl --debug status 192.168.1.100
+wizctl --debug status -t 192.168.1.100
 ```
+
+### CLI Flags Reference
+
+| Flag | Abbr | Used In | Description |
+|------|------|---------|-------------|
+| `--target` | `-t` | Control commands | Light, alias, or group to control |
+| `--brightness` | `-b` | on, color, temp, scene, brightness | Brightness value (10-100) |
+| `--rgb` | `-c` | color | RGB color as R,G,B (e.g., 255,100,50) |
+| `--kelvin` | `-k` | temp | Temperature in Kelvin (1000-10000) |
+| `--scene` | `-s` | scene | Scene name |
+| `--ip` | | alias | IP address of the light |
+| `--name` | `-n` | alias, group add/remove | Alias or group name |

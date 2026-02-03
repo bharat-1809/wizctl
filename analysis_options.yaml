@@ -1,30 +1,32 @@
-# This file configures the static analysis results for your project (errors,
-# warnings, and lints).
-#
-# This enables the 'recommended' set of lints from `package:lints`.
-# This set helps identify many issues that may lead to problems when running
-# or consuming Dart code, and enforces writing Dart using a single, idiomatic
-# style and format.
-#
-# If you want a smaller set of lints you can change this to specify
-# 'package:lints/core.yaml'. These are just the most critical lints
-# (the recommended set includes the core lints).
-# The core lints are also what is used by pub.dev for scoring packages.
-
 include: package:lints/recommended.yaml
 
-# Uncomment the following section to specify additional rules.
-
-# linter:
-#   rules:
-#     - camel_case_types
-
-# analyzer:
-#   exclude:
-#     - path/to/excluded/files/**
-
-# For more information about the core and recommended set of lints, see
-# https://dart.dev/go/core-lints
-
-# For additional information about configuring this file, see
-# https://dart.dev/guides/language/analysis-options
+analyzer:
+  errors:
+    comment_references: ignore
+linter:
+  rules:
+    # Either "unnecessary_final" or "prefer_final_locals" should be used so
+    # that the codebase consistently uses either "var" or "final" for local
+    # variables. Choosing the former because the latter also requires "final"
+    # even on local variables and pattern variables that have type annotations,
+    # as in:
+    #
+    #     final Object upcast = 123;
+    #     //^^^ Unnecessarily verbose.
+    #
+    #     switch (json) {
+    #       case final List list: ...
+    #         // ^^^^^ Unnecessarily verbose.
+    #     }
+    #
+    # Using "unnecessary_final" allows those to be:
+    #
+    #     Object upcast = 123;
+    #
+    #     switch (json) {
+    #       case List list: ...
+    #     }
+    #
+    # Also, making local variables non-final is consistent with parameters,
+    # which are also non-final.
+    - unnecessary_final

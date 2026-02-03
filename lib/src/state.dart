@@ -61,7 +61,10 @@ class LightState {
   bool get isSceneMode => sceneId != null && sceneId! > 0;
 
   /// Whether the light is using white LEDs directly.
-  bool get isWhiteMode => (coldWhite != null || warmWhite != null) && !isRgbMode && !isTemperatureMode;
+  bool get isWhiteMode =>
+      (coldWhite != null || warmWhite != null) &&
+      !isRgbMode &&
+      !isTemperatureMode;
 
   const LightState({
     required this.isOn,
@@ -81,7 +84,7 @@ class LightState {
   });
 
   factory LightState.fromJson(Map<String, dynamic> json) {
-    final result = json[keyResult] as Map<String, dynamic>? ?? json;
+    var result = json[keyResult] as Map<String, dynamic>? ?? json;
     return LightState(
       isOn: result[keyState] as bool? ?? false,
       dimming: result[keyDimming] as int?,
@@ -119,7 +122,7 @@ class LightState {
 
   @override
   String toString() {
-    final parts = <String>['isOn: $isOn'];
+    var parts = <String>['isOn: $isOn'];
     if (dimming != null) parts.add('dimming: $dimming%');
     if (isRgbMode) parts.add('rgb: ($r, $g, $b)');
     if (temperature != null) parts.add('temp: ${temperature}K');
@@ -144,7 +147,8 @@ class LightState {
           mac == other.mac;
 
   @override
-  int get hashCode => Object.hash(isOn, dimming, r, g, b, temperature, sceneId, speed, mac);
+  int get hashCode =>
+      Object.hash(isOn, dimming, r, g, b, temperature, sceneId, speed, mac);
 }
 
 /// A WiZ light discovered on the network.
@@ -172,7 +176,7 @@ class DiscoveredLight {
   });
 
   factory DiscoveredLight.fromJson(Map<String, dynamic> json, String ip) {
-    final result = json[keyResult] as Map<String, dynamic>? ?? json;
+    var result = json[keyResult] as Map<String, dynamic>? ?? json;
     return DiscoveredLight(
       ip: ip,
       mac: result[keyMac] as String? ?? '',
@@ -187,7 +191,8 @@ class DiscoveredLight {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is DiscoveredLight && ip == other.ip && mac == other.mac;
+      identical(this, other) ||
+      other is DiscoveredLight && ip == other.ip && mac == other.mac;
 
   @override
   int get hashCode => Object.hash(ip, mac);
@@ -195,7 +200,6 @@ class DiscoveredLight {
 
 /// System configuration of a WiZ bulb.
 class BulbConfig {
-  
   /// MAC address of the light.
   final String? mac;
 
@@ -237,8 +241,8 @@ class BulbConfig {
   });
 
   factory BulbConfig.fromJson(Map<String, dynamic> json) {
-    final result = json[keyResult] as Map<String, dynamic>? ?? json;
-    final moduleName = result[keyModuleName] as String?;
+    var result = json[keyResult] as Map<String, dynamic>? ?? json;
+    var moduleName = result[keyModuleName] as String?;
 
     KelvinRange? kelvinRange;
     if (result.containsKey(keyKelvinRange)) {
@@ -262,7 +266,7 @@ class BulbConfig {
 
   @override
   String toString() {
-    final parts = <String>[];
+    var parts = <String>[];
     if (mac != null) parts.add('mac: $mac');
     if (moduleName != null) parts.add('module: $moduleName');
     if (bulbClass != null) parts.add('type: ${bulbClass!.displayName}');

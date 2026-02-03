@@ -49,7 +49,7 @@ class WizLight {
   /// - [WizTimeoutError] if the light doesn't respond.
   /// - [WizConnectionError] if there's a network error.
   Future<LightState> getState() async {
-    final response = await WizProtocol.send(
+    var response = await WizProtocol.send(
       ip: ip,
       message: {keyMethod: methodGetPilot, keyParams: {}},
       port: port,
@@ -68,7 +68,7 @@ class WizLight {
   /// - [WizConnectionError] if there's a network error.
   Future<BulbConfig> getSystemConfig() async {
     if (_cachedConfig != null) return _cachedConfig!;
-    final response = await WizProtocol.send(
+    var response = await WizProtocol.send(
       ip: ip,
       message: {keyMethod: methodGetSystemConfig, keyParams: {}},
       port: port,
@@ -88,13 +88,13 @@ class WizLight {
   /// Tries to get from model config first (FW >1.22), falls back to defaults.
   Future<KelvinRange> getKelvinRange() async {
     try {
-      final response = await WizProtocol.send(
+      var response = await WizProtocol.send(
         ip: ip,
         message: {keyMethod: methodGetModelConfig, keyParams: {}},
         port: port,
         timeout: timeout,
       );
-      final result = response[keyResult] as Map<String, dynamic>? ?? response;
+      var result = response[keyResult] as Map<String, dynamic>? ?? response;
       if (result.containsKey(keyKelvinRange)) {
         return KelvinRange.fromJson(result[keyKelvinRange]);
       }
@@ -111,7 +111,8 @@ class WizLight {
   // ===========================================================================
 
   Future<void> send(ControlSignal signal) async {
-    await WizProtocol.send(ip: ip, message: signal.toMessage(), port: port, timeout: timeout);
+    await WizProtocol.send(
+        ip: ip, message: signal.toMessage(), port: port, timeout: timeout);
   }
 
   /// Turns the light on.
@@ -129,7 +130,7 @@ class WizLight {
   ///
   /// Gets the current state and sets it to the opposite.
   Future<void> toggle() async {
-    final state = await getState();
+    var state = await getState();
     state.isOn ? await turnOff() : await turnOn();
   }
 
@@ -142,7 +143,10 @@ class WizLight {
   /// Throws [WizArgumentError] if [percent] is out of range.
   Future<void> setBrightness(int percent) async {
     if (percent < minBrightness || percent > maxBrightness) {
-      throw WizArgumentError(argumentName: 'percent', invalidValue: percent, message: errorBrightnessRange);
+      throw WizArgumentError(
+          argumentName: 'percent',
+          invalidValue: percent,
+          message: errorBrightnessRange);
     }
     await send(ControlSignal(dimming: percent));
   }
@@ -165,7 +169,10 @@ class WizLight {
   /// Throws [WizArgumentError] if [kelvin] is out of range.
   Future<void> setTemperature(int kelvin, {int? brightness}) async {
     if (kelvin < minTemperature || kelvin > maxTemperature) {
-      throw WizArgumentError(argumentName: 'kelvin', invalidValue: kelvin, message: errorTemperatureRange);
+      throw WizArgumentError(
+          argumentName: 'kelvin',
+          invalidValue: kelvin,
+          message: errorTemperatureRange);
     }
     await send(ControlSignal(temperature: kelvin, dimming: brightness));
   }
@@ -176,7 +183,8 @@ class WizLight {
   /// [brightness] - Optional brightness level (10-100).
   /// [speed] - Optional effect speed (10-200) for dynamic scenes.
   Future<void> setScene(WizScene scene, {int? brightness, int? speed}) async {
-    await send(ControlSignal(sceneId: scene.id, dimming: brightness, speed: speed));
+    await send(
+        ControlSignal(sceneId: scene.id, dimming: brightness, speed: speed));
   }
 
   /// Sets the warm white LED intensity.
@@ -185,7 +193,8 @@ class WizLight {
   /// [brightness] - Optional brightness level (10-100).
   Future<void> setWarmWhite(int value, {int? brightness}) async {
     if (value < minColorValue || value > maxColorValue) {
-      throw WizArgumentError(argumentName: 'value', invalidValue: value, message: errorWhiteRange);
+      throw WizArgumentError(
+          argumentName: 'value', invalidValue: value, message: errorWhiteRange);
     }
     await send(ControlSignal(warmWhite: value, dimming: brightness));
   }
@@ -196,7 +205,8 @@ class WizLight {
   /// [brightness] - Optional brightness level (10-100).
   Future<void> setColdWhite(int value, {int? brightness}) async {
     if (value < minColorValue || value > maxColorValue) {
-      throw WizArgumentError(argumentName: 'value', invalidValue: value, message: errorWhiteRange);
+      throw WizArgumentError(
+          argumentName: 'value', invalidValue: value, message: errorWhiteRange);
     }
     await send(ControlSignal(coldWhite: value, dimming: brightness));
   }
@@ -206,8 +216,10 @@ class WizLight {
   /// [coldWhite] - Cold white intensity (0-255).
   /// [warmWhite] - Warm white intensity (0-255).
   /// [brightness] - Optional brightness level (10-100).
-  Future<void> setWhite({int? coldWhite, int? warmWhite, int? brightness}) async {
-    await send(ControlSignal(coldWhite: coldWhite, warmWhite: warmWhite, dimming: brightness));
+  Future<void> setWhite(
+      {int? coldWhite, int? warmWhite, int? brightness}) async {
+    await send(ControlSignal(
+        coldWhite: coldWhite, warmWhite: warmWhite, dimming: brightness));
   }
 
   /// Sets the effect speed for dynamic scenes.
@@ -217,7 +229,8 @@ class WizLight {
   /// Throws [WizArgumentError] if [speed] is out of range.
   Future<void> setSpeed(int speed) async {
     if (speed < minSpeed || speed > maxSpeed) {
-      throw WizArgumentError(argumentName: 'speed', invalidValue: speed, message: errorSpeedRange);
+      throw WizArgumentError(
+          argumentName: 'speed', invalidValue: speed, message: errorSpeedRange);
     }
     await send(ControlSignal(speed: speed));
   }
@@ -230,7 +243,11 @@ class WizLight {
   ///
   /// The light will restart and reconnect to the network.
   Future<void> reboot() async {
-    await WizProtocol.send(ip: ip, message: {keyMethod: methodReboot, keyParams: {}}, port: port, timeout: timeout);
+    await WizProtocol.send(
+        ip: ip,
+        message: {keyMethod: methodReboot, keyParams: {}},
+        port: port,
+        timeout: timeout);
   }
 
   /// Resets the light to factory settings.
@@ -238,7 +255,11 @@ class WizLight {
   /// WARNING: This will remove all configuration including WiFi settings.
   /// The light will need to be set up again.
   Future<void> reset() async {
-    await WizProtocol.send(ip: ip, message: {keyMethod: methodReset, keyParams: {}}, port: port, timeout: timeout);
+    await WizProtocol.send(
+        ip: ip,
+        message: {keyMethod: methodReset, keyParams: {}},
+        port: port,
+        timeout: timeout);
   }
 
   @override
@@ -246,7 +267,8 @@ class WizLight {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || other is WizLight && ip == other.ip && port == other.port;
+      identical(this, other) ||
+      other is WizLight && ip == other.ip && port == other.port;
 
   @override
   int get hashCode => Object.hash(ip, port);

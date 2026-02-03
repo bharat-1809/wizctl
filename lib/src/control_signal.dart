@@ -41,45 +41,75 @@ class ControlSignal {
   ControlSignal.on() : this(state: true);
   ControlSignal.off() : this(state: false);
   ControlSignal.brightness(int percent) : this(dimming: percent);
-  ControlSignal.rgb(int r, int g, int b, {int? brightness}) : this(r: r, g: g, b: b, dimming: brightness);
-  ControlSignal.temperature(int kelvin, {int? brightness}) : this(temperature: kelvin, dimming: brightness);
-  ControlSignal.scene(WizScene scene, {int? brightness, int? speed}) : this(sceneId: scene.id, dimming: brightness, speed: speed);
-  ControlSignal.warmWhite(int value, {int? brightness}) : this(warmWhite: value, dimming: brightness);
-  ControlSignal.coldWhite(int value, {int? brightness}) : this(coldWhite: value, dimming: brightness);
+  ControlSignal.rgb(int r, int g, int b, {int? brightness})
+      : this(r: r, g: g, b: b, dimming: brightness);
+  ControlSignal.temperature(int kelvin, {int? brightness})
+      : this(temperature: kelvin, dimming: brightness);
+  ControlSignal.scene(WizScene scene, {int? brightness, int? speed})
+      : this(sceneId: scene.id, dimming: brightness, speed: speed);
+  ControlSignal.warmWhite(int value, {int? brightness})
+      : this(warmWhite: value, dimming: brightness);
+  ControlSignal.coldWhite(int value, {int? brightness})
+      : this(coldWhite: value, dimming: brightness);
   ControlSignal.speed(int value) : this(speed: value);
 
   void _validate() {
-    if (dimming != null && (dimming! < minBrightness || dimming! > maxBrightness)) {
-      throw WizArgumentError(argumentName: 'dimming', invalidValue: dimming, message: errorBrightnessRange);
+    if (dimming != null &&
+        (dimming! < minBrightness || dimming! > maxBrightness)) {
+      throw WizArgumentError(
+          argumentName: 'dimming',
+          invalidValue: dimming,
+          message: errorBrightnessRange);
     }
     if (r != null && (r! < minColorValue || r! > maxColorValue)) {
-      throw WizArgumentError(argumentName: 'r', invalidValue: r, message: errorRedRange);
+      throw WizArgumentError(
+          argumentName: 'r', invalidValue: r, message: errorRedRange);
     }
     if (g != null && (g! < minColorValue || g! > maxColorValue)) {
-      throw WizArgumentError(argumentName: 'g', invalidValue: g, message: errorGreenRange);
+      throw WizArgumentError(
+          argumentName: 'g', invalidValue: g, message: errorGreenRange);
     }
     if (b != null && (b! < minColorValue || b! > maxColorValue)) {
-      throw WizArgumentError(argumentName: 'b', invalidValue: b, message: errorBlueRange);
+      throw WizArgumentError(
+          argumentName: 'b', invalidValue: b, message: errorBlueRange);
     }
-    if (coldWhite != null && (coldWhite! < minColorValue || coldWhite! > maxColorValue)) {
-      throw WizArgumentError(argumentName: 'coldWhite', invalidValue: coldWhite, message: errorWhiteRange);
+    if (coldWhite != null &&
+        (coldWhite! < minColorValue || coldWhite! > maxColorValue)) {
+      throw WizArgumentError(
+          argumentName: 'coldWhite',
+          invalidValue: coldWhite,
+          message: errorWhiteRange);
     }
-    if (warmWhite != null && (warmWhite! < minColorValue || warmWhite! > maxColorValue)) {
-      throw WizArgumentError(argumentName: 'warmWhite', invalidValue: warmWhite, message: errorWhiteRange);
+    if (warmWhite != null &&
+        (warmWhite! < minColorValue || warmWhite! > maxColorValue)) {
+      throw WizArgumentError(
+          argumentName: 'warmWhite',
+          invalidValue: warmWhite,
+          message: errorWhiteRange);
     }
-    if (temperature != null && (temperature! < minTemperature || temperature! > maxTemperature)) {
-      throw WizArgumentError(argumentName: 'temperature', invalidValue: temperature, message: errorTemperatureRange);
+    if (temperature != null &&
+        (temperature! < minTemperature || temperature! > maxTemperature)) {
+      throw WizArgumentError(
+          argumentName: 'temperature',
+          invalidValue: temperature,
+          message: errorTemperatureRange);
     }
-    if (sceneId != null && sceneId != rhythmSceneId && (sceneId! < minSceneId || sceneId! > maxSceneId)) {
-      throw WizArgumentError(argumentName: 'sceneId', invalidValue: sceneId, message: errorSceneIdRange);
+    if (sceneId != null &&
+        sceneId != rhythmSceneId &&
+        (sceneId! < minSceneId || sceneId! > maxSceneId)) {
+      throw WizArgumentError(
+          argumentName: 'sceneId',
+          invalidValue: sceneId,
+          message: errorSceneIdRange);
     }
     if (speed != null && (speed! < minSpeed || speed! > maxSpeed)) {
-      throw WizArgumentError(argumentName: 'speed', invalidValue: speed, message: errorSpeedRange);
+      throw WizArgumentError(
+          argumentName: 'speed', invalidValue: speed, message: errorSpeedRange);
     }
   }
 
   Map<String, dynamic> toJson() {
-    final params = <String, dynamic>{};
+    var params = <String, dynamic>{};
     if (state != null) params[keyState] = state;
     if (dimming != null) params[keyDimming] = dimming;
     if (r != null) params[keyRed] = r;
@@ -94,11 +124,12 @@ class ControlSignal {
     return params;
   }
 
-  Map<String, dynamic> toMessage() => {keyMethod: methodSetPilot, keyParams: toJson()};
+  Map<String, dynamic> toMessage() =>
+      {keyMethod: methodSetPilot, keyParams: toJson()};
 
   @override
   String toString() {
-    final parts = <String>[];
+    var parts = <String>[];
     if (state != null) parts.add('state: $state');
     if (dimming != null) parts.add('dimming: $dimming%');
     if (r != null && g != null && b != null) parts.add('rgb: ($r, $g, $b)');

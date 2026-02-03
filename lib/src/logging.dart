@@ -30,7 +30,7 @@ class WizLogger {
     if (_callback != null) {
       _callback!(level, message);
     } else {
-      final prefix = switch (level) {
+      var prefix = switch (level) {
         WizLogLevel.error => '[ERROR]',
         WizLogLevel.warn => '[WARN] ',
         WizLogLevel.info => '[INFO] ',
@@ -38,7 +38,7 @@ class WizLogger {
         WizLogLevel.verbose => '[TRACE]',
         WizLogLevel.none => '',
       };
-      final timestamp = DateTime.now().toIso8601String().substring(11, 23);
+      var timestamp = DateTime.now().toIso8601String().substring(11, 23);
       print('[$timestamp] $prefix $message');
     }
   }

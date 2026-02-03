@@ -141,16 +141,23 @@ const int defaultSpeed = 100;
 // =============================================================================
 
 /// Error message for brightness out of range.
-const String errorBrightnessRange = 'Brightness must be between $minBrightness and $maxBrightness';
+const String errorBrightnessRange =
+    'Brightness must be between $minBrightness and $maxBrightness';
 
 /// Error message for red value out of range.
-const String errorRedRange = 'Red value must be between $minColorValue and $maxColorValue';
-const String errorGreenRange = 'Green value must be between $minColorValue and $maxColorValue';
-const String errorBlueRange = 'Blue value must be between $minColorValue and $maxColorValue';
-const String errorTemperatureRange = 'Color temperature must be between ${minTemperature}K and ${maxTemperature}K';
-const String errorSceneIdRange = 'Scene ID must be between $minSceneId and $maxSceneId';
+const String errorRedRange =
+    'Red value must be between $minColorValue and $maxColorValue';
+const String errorGreenRange =
+    'Green value must be between $minColorValue and $maxColorValue';
+const String errorBlueRange =
+    'Blue value must be between $minColorValue and $maxColorValue';
+const String errorTemperatureRange =
+    'Color temperature must be between ${minTemperature}K and ${maxTemperature}K';
+const String errorSceneIdRange =
+    'Scene ID must be between $minSceneId and $maxSceneId';
 const String errorSpeedRange = 'Speed must be between $minSpeed and $maxSpeed';
-const String errorWhiteRange = 'White value must be between $minColorValue and $maxColorValue';
+const String errorWhiteRange =
+    'White value must be between $minColorValue and $maxColorValue';
 
 // =============================================================================
 // CLI Constants
