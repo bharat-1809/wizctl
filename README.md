@@ -12,7 +12,8 @@ The official Philips app is laggy and is available only for mobile. This package
 
 ## Features
 
-- **Discovery** - Find lights on your network via UDP broadcast
+- **Discovery** - Find lights by UDP broadcast, or by asking each address on
+  your subnet directly when broadcast doesn't reach them
 - **Control** - On/off, brightness, RGB color, color temperature, scenes
 - **Groups** - Control multiple lights in parallel
 - **36 Scenes** - All built-in WiZ scenes with speed control

@@ -18,9 +18,9 @@ class LightConfig {
       LightConfig(alias: json['alias'] as String?, mac: json['mac'] as String?);
 
   Map<String, dynamic> toJson() => {
-        if (alias != null) 'alias': alias,
-        if (mac != null) 'mac': mac,
-      };
+    if (alias != null) 'alias': alias,
+    if (mac != null) 'mac': mac,
+  };
 }
 
 class CliConfig {
@@ -30,8 +30,8 @@ class CliConfig {
   CliConfig({
     Map<String, LightConfig>? lights,
     Map<String, List<String>>? groups,
-  })  : lights = lights ?? {},
-        groups = groups ?? {};
+  }) : lights = lights ?? {},
+       groups = groups ?? {};
 
   factory CliConfig.fromJson(Map<String, dynamic> json) {
     var lightsJson = json['lights'] as Map<String, dynamic>? ?? {};
@@ -49,9 +49,9 @@ class CliConfig {
   }
 
   Map<String, dynamic> toJson() => {
-        'lights': lights.map((ip, config) => MapEntry(ip, config.toJson())),
-        'groups': groups,
-      };
+    'lights': lights.map((ip, config) => MapEntry(ip, config.toJson())),
+    'groups': groups,
+  };
 
   void setAlias(String ip, String alias, {String? mac}) {
     lights[ip] = LightConfig(alias: alias, mac: mac ?? lights[ip]?.mac);
@@ -345,7 +345,9 @@ void main() {
 
       // Load
       var content = await configFile.readAsString();
-      var loaded = CliConfig.fromJson(jsonDecode(content) as Map<String, dynamic>);
+      var loaded = CliConfig.fromJson(
+        jsonDecode(content) as Map<String, dynamic>,
+      );
 
       expect(loaded.getAlias('192.168.1.100'), equals('Living Room'));
       expect(loaded.resolveGroup('all'), hasLength(1));

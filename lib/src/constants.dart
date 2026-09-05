@@ -148,7 +148,6 @@ const Duration subnetScanBatchInterval = Duration(milliseconds: 400);
 /// nothing at all — even for lights that answer a direct request immediately.
 /// Probing in chunks, each on its own socket, bounds the damage to one chunk.
 const int subnetScanChunkSize = 64;
-const Duration discoveryBroadcastInterval = Duration(seconds: 1);
 
 // =============================================================================
 // Validation Limits
@@ -200,7 +199,7 @@ const String errorWhiteRange =
 // =============================================================================
 
 /// CLI tool version.
-const String cliVersion = '0.1.0';
+const String cliVersion = '1.0.0';
 
 /// CLI tool name.
 const String cliName = 'wizctl';

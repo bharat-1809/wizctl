@@ -210,10 +210,27 @@ void main() {
 
         // Guard the premise: if the port were still bindable this test would
         // pass without ever exercising the fallback.
-        await expectLater(
-          RawDatagramSocket.bind(InternetAddress.anyIPv4, replyPort),
-          throwsA(isA<SocketException>()),
-        );
+        //
+        // Whether a second bind of a held UDP port fails is platform
+        // dependent. macOS refuses it; Linux allows it, because Dart binds
+        // with SO_REUSEADDR. Where the kernel allows it there is no contention
+        // for the fallback to resolve, so there is nothing here to test.
+        var contended = false;
+        try {
+          (await RawDatagramSocket.bind(
+            InternetAddress.anyIPv4,
+            replyPort,
+          )).close();
+        } on SocketException {
+          contended = true;
+        }
+        if (!contended) {
+          markTestSkipped(
+            'This platform allows rebinding a UDP port that is already held, '
+            'so the ephemeral-port fallback cannot be provoked here.',
+          );
+          return;
+        }
 
         var bulb = await FakeBulb.start(
           listenPort: bulbPort,
