@@ -83,72 +83,99 @@ class WizProtocol {
       var data = utf8.encode(messageJson);
       var address = InternetAddress(ip);
       var completer = Completer<Map<String, dynamic>>();
+      // Attach an error listener straight away. The completer can be completed
+      // with an error before the code below reaches its `await`, and a future
+      // that holds an error with nobody listening is reported as an unhandled
+      // async error, which terminates the process.
+      completer.future.catchError((Object _) => <String, dynamic>{});
       var attemptNumber = 0;
       var currentRetryInterval = retryConfig.interval;
       Timer? attemptTimeoutTimer;
+      SocketException? lastSocketError;
 
-      var subscription = socket.listen((event) {
-        if (event == RawSocketEvent.read) {
-          var datagram = socket!.receive();
-          if (datagram != null) {
-            var responseText = utf8.decode(datagram.data);
-            WizLogger.debug(
-              'Received from ${datagram.address.address}: $responseText',
+      // How this request should fail. `send` reports an unreachable host
+      // asynchronously rather than by throwing, so when we saw such an error
+      // it is a far better explanation than a bare timeout.
+      Object failure() => lastSocketError != null
+          ? WizConnectionError('Cannot reach $ip:$port', lastSocketError)
+          : WizTimeoutError(
+              ip: ip,
+              timeout: timeout,
+              retryCount: attemptNumber,
             );
 
-            try {
-              var response = jsonDecode(responseText) as Map<String, dynamic>;
+      var subscription = socket.listen(
+        (event) {
+          if (event == RawSocketEvent.read) {
+            var datagram = socket!.receive();
+            if (datagram != null) {
+              var responseText = utf8.decode(datagram.data);
+              WizLogger.debug(
+                'Received from ${datagram.address.address}: $responseText',
+              );
 
-              if (response.containsKey(keyError)) {
-                var error = response[keyError] as Map<String, dynamic>;
-                var code = error[keyCode] as int?;
-                var errorMsg = error['message'] as String? ?? 'Unknown error';
+              try {
+                var response = jsonDecode(responseText) as Map<String, dynamic>;
 
-                WizLogger.error(
-                  'Error response: code=$code, message=$errorMsg',
-                );
+                if (response.containsKey(keyError)) {
+                  var error = response[keyError] as Map<String, dynamic>;
+                  var code = error[keyCode] as int?;
+                  var errorMsg = error['message'] as String? ?? 'Unknown error';
 
-                if (code == errorCodeMethodNotFound) {
+                  WizLogger.error(
+                    'Error response: code=$code, message=$errorMsg',
+                  );
+
+                  if (code == errorCodeMethodNotFound) {
+                    if (!completer.isCompleted) {
+                      completer.completeError(
+                        WizMethodNotFoundError(method: method, ip: ip),
+                      );
+                    }
+                    return;
+                  }
+
                   if (!completer.isCompleted) {
                     completer.completeError(
-                      WizMethodNotFoundError(method: method, ip: ip),
+                      WizResponseError(
+                        'Error from light: $errorMsg',
+                        errorCode: code,
+                        rawResponse: responseText,
+                      ),
                     );
                   }
                   return;
                 }
 
+                WizLogger.info('Success: $method response from $ip');
+                if (!completer.isCompleted) {
+                  attemptTimeoutTimer?.cancel();
+                  completer.complete(response);
+                }
+              } catch (e) {
+                WizLogger.error('Failed to parse response: $e');
                 if (!completer.isCompleted) {
                   completer.completeError(
                     WizResponseError(
-                      'Error from light: $errorMsg',
-                      errorCode: code,
+                      'Failed to parse response from $ip',
                       rawResponse: responseText,
+                      cause: e,
                     ),
                   );
                 }
-                return;
-              }
-
-              WizLogger.info('Success: $method response from $ip');
-              if (!completer.isCompleted) {
-                attemptTimeoutTimer?.cancel();
-                completer.complete(response);
-              }
-            } catch (e) {
-              WizLogger.error('Failed to parse response: $e');
-              if (!completer.isCompleted) {
-                completer.completeError(
-                  WizResponseError(
-                    'Failed to parse response from $ip',
-                    rawResponse: responseText,
-                    cause: e,
-                  ),
-                );
               }
             }
           }
-        }
-      });
+        },
+        onError: (Object error) {
+          // [RawDatagramSocket.send] returns 0 and reports the failure here
+          // instead of throwing, so this is the only place an unreachable host
+          // surfaces. Without this handler it becomes an unhandled async error
+          // that terminates the process.
+          if (error is SocketException) lastSocketError = error;
+          WizLogger.debug('Socket error talking to $ip: $error');
+        },
+      );
 
       Future<void> sendWithRetry() async {
         // Always make at least one attempt
@@ -162,12 +189,21 @@ class WizProtocol {
           );
 
           if (bytesSent != data.length) {
-            WizLogger.error('Incomplete send: $bytesSent/${data.length} bytes');
-            if (!completer.isCompleted) {
-              completer.completeError(
-                WizConnectionError('Failed to send to $ip:$port'),
-              );
+            // The OS refused the datagram - typically an unresolved ARP entry
+            // for a host that is asleep. The reason arrives asynchronously on
+            // the socket, not as a throw. Treat it as a failed attempt: the
+            // next one usually succeeds once ARP has resolved.
+            WizLogger.debug('Incomplete send: $bytesSent/${data.length} bytes');
+            if (attemptNumber < maxAttempts) {
+              await Future.delayed(currentRetryInterval);
+              if (retryConfig.strategy == RetryStrategy.exponential) {
+                currentRetryInterval = retryConfig.nextExponentialInterval(
+                  currentRetryInterval,
+                );
+              }
+              continue;
             }
+            if (!completer.isCompleted) completer.completeError(failure());
             return;
           }
 
@@ -216,16 +252,10 @@ class WizProtocol {
             }
             // For fixed strategy, currentRetryInterval stays the same
           } else if (attemptTimedOut) {
-            // No more retries, fail with timeout
-            WizLogger.error('Timeout after $attemptNumber attempts to $ip');
+            // No more retries left
+            WizLogger.error('Giving up after $attemptNumber attempts to $ip');
             if (!completer.isCompleted) {
-              completer.completeError(
-                WizTimeoutError(
-                  ip: ip,
-                  timeout: timeout,
-                  retryCount: attemptNumber,
-                ),
-              );
+              completer.completeError(failure());
             }
             break;
           }
@@ -233,14 +263,8 @@ class WizProtocol {
 
         // Ensure completer is always completed (safety check)
         if (!completer.isCompleted) {
-          WizLogger.error('Timeout after $attemptNumber attempts to $ip');
-          completer.completeError(
-            WizTimeoutError(
-              ip: ip,
-              timeout: timeout,
-              retryCount: attemptNumber,
-            ),
-          );
+          WizLogger.error('Giving up after $attemptNumber attempts to $ip');
+          completer.completeError(failure());
         }
       }
 
@@ -285,31 +309,95 @@ class WizProtocol {
     }
   }
 
-  /// Sends a broadcast message for discovery.
+  /// Opens a broadcast-enabled socket for discovery.
   ///
-  /// Returns the socket for receiving responses. Caller is responsible for closing it.
-  static Future<RawDatagramSocket> sendBroadcast({
-    required String ip,
-    required Map<String, dynamic> message,
-    int port = wizPort,
+  /// Nothing is sent yet: the caller attaches its listener first, then sends,
+  /// so no response can arrive before anyone is listening for it.
+  ///
+  /// [localPort] is the local port to bind. It defaults to [wizPort] on
+  /// purpose. WiZ firmware does not consistently reply to the source port of
+  /// the request; a lot of it addresses the reply to the WiZ port on the
+  /// sender's IP. A socket on an ephemeral port therefore never sees those
+  /// replies and the bulb looks absent. Binding [wizPort] catches both
+  /// behaviours. Pass 0 for an ephemeral port.
+  ///
+  /// [bindAddress] restricts the socket to one local address, which forces
+  /// broadcasts out of that specific interface. Defaults to all interfaces.
+  ///
+  /// If [localPort] is already taken (the WiZ app or another wizctl run holds
+  /// it), this falls back to an ephemeral port rather than failing outright —
+  /// degraded, but still able to find source-port firmware.
+  ///
+  /// Returns the socket for receiving responses. Caller is responsible for
+  /// closing it.
+  static Future<RawDatagramSocket> openBroadcastSocket({
+    int localPort = wizPort,
+    InternetAddress? bindAddress,
   }) async {
-    var messageJson = jsonEncode(message);
-    WizLogger.info('Broadcasting to $ip:$port');
-    WizLogger.debug('Broadcast: $messageJson');
+    var address = bindAddress ?? InternetAddress.anyIPv4;
 
     try {
-      var socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      RawDatagramSocket socket;
+      try {
+        // Deliberately no reusePort: sharing the port would let the bind
+        // succeed while unicast replies get delivered to whichever socket the
+        // kernel picks. Losing lights at random is worse than failing loudly
+        // and falling back below.
+        socket = await RawDatagramSocket.bind(address, localPort);
+      } on SocketException catch (e) {
+        if (localPort == 0) rethrow;
+        WizLogger.warn(
+          'Could not bind local port $localPort ($e). Falling back to an '
+          'ephemeral port; lights whose firmware replies to port $localPort '
+          'instead of the request source port will not be discovered.',
+        );
+        socket = await RawDatagramSocket.bind(address, 0);
+      }
+
       socket.broadcastEnabled = true;
-      WizLogger.verbose('Broadcast socket on port ${socket.port}');
-
-      var data = utf8.encode(messageJson);
-      var bytesSent = socket.send(data, InternetAddress(ip), port);
-      WizLogger.debug('Sent $bytesSent bytes');
-
+      WizLogger.verbose(
+        'Broadcast socket on ${address.address}:${socket.port}',
+      );
       return socket;
     } on SocketException catch (e) {
-      WizLogger.error('Broadcast failed: $e');
-      throw WizConnectionError('Broadcast to $ip:$port failed', e);
+      WizLogger.error('Failed to open broadcast socket: $e');
+      throw WizConnectionError(
+        'Failed to open broadcast socket on ${address.address}:$localPort',
+        e,
+      );
+    }
+  }
+
+  /// Sends a discovery broadcast on an already-open [socket].
+  ///
+  /// Returns false when the datagram could not be put on the wire. A
+  /// point-to-point interface (a VPN tunnel, for instance) has no broadcast
+  /// domain, and macOS reports that either by sending 0 bytes or by throwing.
+  /// Callers get a value to check instead of an exception, because these sends
+  /// also happen from retry timers where a throw would surface as an unhandled
+  /// async error and take the process down.
+  static bool sendBroadcast({
+    required RawDatagramSocket socket,
+    required String ip,
+    required List<int> data,
+    int port = wizPort,
+  }) {
+    WizLogger.info('Broadcasting to $ip:$port');
+    try {
+      var bytesSent = socket.send(data, InternetAddress(ip), port);
+      if (bytesSent != data.length) {
+        WizLogger.warn(
+          'Broadcast to $ip:$port sent $bytesSent/${data.length} bytes',
+        );
+        return false;
+      }
+      WizLogger.debug('Sent $bytesSent bytes to $ip:$port');
+      return true;
+    } on SocketException catch (e) {
+      WizLogger.warn(
+        'Broadcast to $ip:$port failed: ${e.osError?.message ?? e.message}',
+      );
+      return false;
     }
   }
 
@@ -326,25 +414,30 @@ class WizProtocol {
     var responses = <(Map<String, dynamic>, InternetAddress)>[];
     var completer = Completer<void>();
 
-    var subscription = socket.listen((event) {
-      if (event == RawSocketEvent.read) {
-        var datagram = socket.receive();
-        if (datagram != null) {
-          var responseText = utf8.decode(datagram.data);
-          WizLogger.debug(
-            'Response from ${datagram.address.address}: $responseText',
-          );
+    var subscription = socket.listen(
+      (event) {
+        if (event == RawSocketEvent.read) {
+          var datagram = socket.receive();
+          if (datagram != null) {
+            var responseText = utf8.decode(datagram.data);
+            WizLogger.debug(
+              'Response from ${datagram.address.address}: $responseText',
+            );
 
-          try {
-            var response = jsonDecode(responseText) as Map<String, dynamic>;
-            responses.add((response, datagram.address));
-            WizLogger.verbose('Total responses: ${responses.length}');
-          } catch (e) {
-            WizLogger.warn('Failed to parse response: $e');
+            try {
+              var response = jsonDecode(responseText) as Map<String, dynamic>;
+              responses.add((response, datagram.address));
+              WizLogger.verbose('Total responses: ${responses.length}');
+            } catch (e) {
+              WizLogger.warn('Failed to parse response: $e');
+            }
           }
         }
-      }
-    });
+      },
+      onError: (Object error) {
+        WizLogger.debug('Socket error while collecting responses: $error');
+      },
+    );
 
     var timer = Timer(timeout, () {
       if (!completer.isCompleted) {

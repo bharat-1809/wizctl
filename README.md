@@ -108,6 +108,34 @@ if (config.supportsColor) {
 }
 ```
 
+## When discovery finds nothing
+
+Discovery broadcasts a `registration` message and waits for lights to answer.
+On some networks the lights never answer it, even though they reply to unicast
+instantly — access points can filter broadcast to wireless clients, and Wi-Fi
+power save on the bulb means broadcast frames only arrive on the access point's
+DTIM schedule. No broadcast-based tool can find lights in that state.
+
+`discover` asks the lights already in your config directly first — that is
+quick and reliable — and falls back to a unicast subnet sweep when it needs to
+look for lights it has not seen before. `--scan` skips the shortcut and sweeps:
+
+```bash
+wizctl discover --scan
+wizctl discover --scan --subnet 192.168.1   # a subnet other than yours
+```
+
+```dart
+final lights = await WizDiscovery.scanSubnet(subnet: '192.168.1');
+```
+
+The scan assumes a /24 and probes each address twice, since the first datagram
+to a host is dropped while the OS resolves its MAC address.
+
+Note that the IP shown in the WiZ app can be stale: the app controls lights
+through Philips' cloud, so it keeps working even when the light is unreachable
+on your local network. Your router's DHCP client list is the reliable source.
+
 ## Retry Configuration
 
 For unreliable networks, you can customize retry behavior:
@@ -155,6 +183,12 @@ wizctl --help
 # Discover and save lights
 wizctl discover --save
 
+# If nothing is found, scan the subnet one address at a time
+wizctl discover --scan
+
+# ...or point it at a different subnet
+wizctl discover --scan --subnet 192.168.1
+
 # Set alias (use flags for names with spaces)
 wizctl alias --ip 192.168.1.100 -n "Living Room"
 
@@ -177,7 +211,7 @@ wizctl --debug status -t 192.168.1.100
 
 | Command | Description |
 |---------|-------------|
-| `discover` | Find lights on the network |
+| `discover` | Find lights on the network (`--scan` for a unicast subnet scan) |
 | `list` | List configured lights |
 | `status -t <light>` | Get current state |
 | `on -t <light>` | Turn on |

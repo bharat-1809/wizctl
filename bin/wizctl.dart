@@ -1,4 +1,5 @@
 #!/usr/bin/env dart
+
 // wizctl - Control WiZ smart lights from the command line.
 
 import 'dart:io';
@@ -91,12 +92,26 @@ void main(List<String> arguments) async {
         help: 'Discovery timeout in seconds',
         defaultsTo: '$cliDefaultDiscoveryTimeoutSeconds',
       );
-  (parser.commands['discover'] as ArgParser).addFlag(
-    'save',
-    abbr: 's',
-    negatable: false,
-    help: 'Save discovered lights to config',
-  );
+  (parser.commands['discover'] as ArgParser)
+    ..addFlag(
+      'save',
+      abbr: 's',
+      negatable: false,
+      help: 'Save discovered lights to config',
+    )
+    ..addOption(
+      'broadcast',
+      help: 'Broadcast address to search (default: $defaultBroadcastAddress)',
+    )
+    ..addFlag(
+      'scan',
+      negatable: false,
+      help: 'Probe every address on the subnet instead of broadcasting',
+    )
+    ..addOption(
+      'subnet',
+      help: 'Subnet to scan, e.g. 192.168.1 (default: this machine\'s)',
+    );
 
   parser.addCommand('list');
   addTargetOption(parser.addCommand('status'));
@@ -152,12 +167,14 @@ void main(List<String> arguments) async {
       .addOption('name', abbr: 'n', help: 'Group name to remove');
 
   var configParser = parser.addCommand('config');
-  configParser.addCommand('clear').addFlag(
-    'force',
-    abbr: 'f',
-    negatable: false,
-    help: 'Skip confirmation prompt',
-  );
+  configParser
+      .addCommand('clear')
+      .addFlag(
+        'force',
+        abbr: 'f',
+        negatable: false,
+        help: 'Skip confirmation prompt',
+      );
   configParser.addCommand('path');
 
   ArgResults results;
@@ -199,7 +216,13 @@ void main(List<String> arguments) async {
         var timeout =
             int.tryParse(command['timeout'] as String) ??
             cliDefaultDiscoveryTimeoutSeconds;
-        await discoverCommand(timeout: timeout, save: command['save'] as bool);
+        await discoverCommand(
+          timeout: timeout,
+          save: command['save'] as bool,
+          broadcast: command['broadcast'] as String?,
+          scan: command['scan'] as bool,
+          subnet: command['subnet'] as String?,
+        );
 
       case 'list':
         await listCommand();
@@ -396,8 +419,11 @@ Future<void> handleGroupCommand(ArgResults command) async {
         exitCode = 1;
         return;
       }
-      var lights =
-          lightsStr.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      var lights = lightsStr
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
       if (lights.isEmpty) {
         stderr.writeln('Error: At least one light is required.');
         exitCode = 1;
@@ -491,6 +517,9 @@ Discovery:
   discover          Find lights on the network
     --timeout, -t   Timeout in seconds (default: $cliDefaultDiscoveryTimeoutSeconds)
     --save, -s      Save discovered lights
+    --broadcast     Broadcast address (default: $defaultBroadcastAddress)
+    --scan          Probe every address on the subnet (if broadcast fails)
+    --subnet        Subnet to scan, e.g. 192.168.1
   list              Show configured lights
   status -t <light> Get light state
 
