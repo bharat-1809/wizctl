@@ -14,9 +14,12 @@ void main() async {
   WizLogger.enable(WizLogLevel.info);
 
   // Custom log callback (optional)
-  WizLogger.enable(WizLogLevel.debug, callback: (level, message) {
-    print('[${level.name.toUpperCase()}] $message');
-  });
+  WizLogger.enable(
+    WizLogLevel.debug,
+    callback: (level, message) {
+      print('[${level.name.toUpperCase()}] $message');
+    },
+  );
 
   // ==========================================================================
   // Discovery
@@ -38,6 +41,30 @@ void main() async {
 
   // Discovery on all network interfaces (useful with multiple adapters)
   // var allInterfacesLights = await WizDiscovery.discoverOnAllInterfaces();
+
+  // Broadcast does not reach the lights on every network: some access points
+  // filter it towards wireless clients, and Wi-Fi power save on the bulb means
+  // broadcast frames only arrive on the access point's DTIM schedule. Unicast
+  // is unaffected, so sweep the subnet one address at a time instead.
+  if (discovered.isEmpty) {
+    print('Broadcast found nothing, scanning the subnet...');
+    discovered = await WizDiscovery.scanSubnet(
+      timeout: Duration(seconds: 5),
+      // Defaults to this machine's own /24; pass e.g. subnet: '192.168.1'
+      // to search a different one.
+    );
+  }
+
+  // Once you know where a light lives, ask it directly. This is quicker than a
+  // sweep and far more reliable, because it never probes empty addresses.
+  var known = [for (var light in discovered) light.ip];
+  if (known.isNotEmpty) {
+    var reachable = await WizDiscovery.probeAddresses(
+      addresses: known,
+      timeout: Duration(seconds: 3),
+    );
+    print('${reachable.length} of ${known.length} known light(s) responded');
+  }
 
   if (discovered.isEmpty) {
     print('No lights found. Check WiFi connection.');
@@ -293,10 +320,7 @@ void main() async {
 
   // Fixed interval retries
   print('  RetryConfig.fixed() - fixed intervals');
-  var fixedRetry = RetryConfig.fixed(
-    count: 3,
-    interval: Duration(seconds: 1),
-  );
+  var fixedRetry = RetryConfig.fixed(count: 3, interval: Duration(seconds: 1));
   print('    Count: ${fixedRetry.count}, Interval: ${fixedRetry.interval}');
 
   // Exponential backoff (default for the library)
@@ -343,6 +367,8 @@ String _describeMode(LightState state) {
   if (state.isSceneMode) return 'Scene (${state.scene?.displayName})';
   if (state.isRgbMode) return 'RGB (${state.r}, ${state.g}, ${state.b})';
   if (state.isTemperatureMode) return 'Temperature (${state.temperature}K)';
-  if (state.isWhiteMode) return 'White (CW: ${state.coldWhite}, WW: ${state.warmWhite})';
+  if (state.isWhiteMode) {
+    return 'White (CW: ${state.coldWhite}, WW: ${state.warmWhite})';
+  }
   return 'Unknown';
 }
