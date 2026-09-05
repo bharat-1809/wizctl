@@ -112,6 +112,42 @@ const String discoveryPhoneIp = '1.2.3.4';
 
 /// Default broadcast address for discovery.
 const String defaultBroadcastAddress = '255.255.255.255';
+
+/// How many times a subnet scan probes each address.
+///
+/// Two, not one: with a cold ARP cache the kernel drops the first datagram to
+/// a host while it resolves that host's MAC, so a single round misses lights
+/// this machine has not talked to recently.
+const int subnetScanRounds = 2;
+
+/// Gap between subnet scan rounds, long enough for ARP to resolve.
+const Duration subnetScanRoundInterval = Duration(milliseconds: 800);
+
+/// How many addresses a subnet scan probes before pausing.
+///
+/// The kernel holds only a small number of datagrams awaiting ARP resolution
+/// (`net.link.ether.inet.maxhold`, 16 on macOS). Firing hundreds at a
+/// mostly-empty subnet overflows that queue, and the probes aimed at the
+/// addresses that *do* have a light behind them are dropped along with the
+/// rest — the scan then reports nothing on a network where every light answers
+/// a direct request. Worse, the failed entries linger for
+/// `net.link.ether.inet.max_age` (20 minutes), so one greedy sweep spoils the
+/// next several. Scanning in batches keeps the queue inside its limit.
+///
+/// Note this is a batch of *addresses*; each one is sent more than one probe.
+const int subnetScanBatchSize = 16;
+
+/// Pause between batches, long enough for the ARP hold queue to drain.
+const Duration subnetScanBatchInterval = Duration(milliseconds: 400);
+
+/// How many addresses one socket is asked to probe before a fresh one is used.
+///
+/// Sweeping a whole subnet from a single long-lived socket is unreliable: the
+/// failures provoked by probing empty addresses can take the socket down
+/// mid-sweep, after which it stops delivering replies and the scan reports
+/// nothing at all — even for lights that answer a direct request immediately.
+/// Probing in chunks, each on its own socket, bounds the damage to one chunk.
+const int subnetScanChunkSize = 64;
 const Duration discoveryBroadcastInterval = Duration(seconds: 1);
 
 // =============================================================================
