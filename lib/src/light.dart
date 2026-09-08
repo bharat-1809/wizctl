@@ -3,6 +3,7 @@ import 'constants.dart';
 import 'control_signal.dart';
 import 'exceptions.dart';
 import 'protocol.dart';
+import 'retry_config.dart';
 import 'scene.dart';
 import 'state.dart';
 
@@ -20,8 +21,16 @@ class WizLight {
   /// The UDP port to communicate on (default: 38899).
   final int port;
 
-  /// Timeout for UDP operations.
+  /// Per-attempt timeout for UDP operations.
   final Duration timeout;
+
+  /// Retry strategy for every request this light sends.
+  ///
+  /// `null` keeps the library default (six attempts with exponential
+  /// backoff). An interactive client wants something tighter, for instance
+  /// three attempts with a one-second timeout, so a dead bulb is reported in
+  /// a few seconds rather than twenty.
+  final RetryConfig? retry;
 
   /// Cached bulb configuration.
   BulbConfig? _cachedConfig;
@@ -30,8 +39,14 @@ class WizLight {
   ///
   /// [ip] - The IP address of the WiZ light.
   /// [port] - The UDP port (defaults to [wizPort]).
-  /// [timeout] - Timeout for operations (defaults to [defaultTimeout]).
-  WizLight(this.ip, {this.port = wizPort, this.timeout = defaultTimeout});
+  /// [timeout] - Per-attempt timeout (defaults to [defaultTimeout]).
+  /// [retry] - Retry strategy (defaults to the library default).
+  WizLight(
+    this.ip, {
+    this.port = wizPort,
+    this.timeout = defaultTimeout,
+    this.retry,
+  });
 
   // ===========================================================================
   // State Methods
@@ -50,6 +65,7 @@ class WizLight {
       message: {keyMethod: methodGetPilot, keyParams: {}},
       port: port,
       timeout: timeout,
+      retry: retry,
     );
     return LightState.fromJson(response);
   }
@@ -69,6 +85,7 @@ class WizLight {
       message: {keyMethod: methodGetSystemConfig, keyParams: {}},
       port: port,
       timeout: timeout,
+      retry: retry,
     );
     _cachedConfig = BulbConfig.fromJson(response);
     return _cachedConfig!;
@@ -89,6 +106,7 @@ class WizLight {
         message: {keyMethod: methodGetModelConfig, keyParams: {}},
         port: port,
         timeout: timeout,
+        retry: retry,
       );
       var result = response[keyResult] as Map<String, dynamic>? ?? response;
       if (result.containsKey(keyKelvinRange)) {
@@ -112,6 +130,7 @@ class WizLight {
       message: signal.toMessage(),
       port: port,
       timeout: timeout,
+      retry: retry,
     );
   }
 
@@ -268,6 +287,7 @@ class WizLight {
       message: {keyMethod: methodReboot, keyParams: {}},
       port: port,
       timeout: timeout,
+      retry: retry,
     );
   }
 
@@ -281,6 +301,7 @@ class WizLight {
       message: {keyMethod: methodReset, keyParams: {}},
       port: port,
       timeout: timeout,
+      retry: retry,
     );
   }
 
