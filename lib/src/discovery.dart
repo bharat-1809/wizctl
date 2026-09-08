@@ -7,6 +7,7 @@ import 'exceptions.dart';
 import 'logging.dart';
 import 'protocol.dart';
 import 'retry_config.dart';
+import 'scan_event.dart';
 import 'state.dart';
 
 /// Discovers WiZ lights on the local network.
@@ -468,7 +469,8 @@ class WizDiscovery {
   /// minutes afterwards. Probing addresses you already know never fills it.
   ///
   /// Prefer this for lights already in a config file, and fall back to
-  /// [scanSubnet] to find ones you have not seen before.
+  /// [scanSubnet] to find ones you have not seen before. For progress and
+  /// lights as they answer, use [probeAddressesStream].
   static Future<List<DiscoveredLight>> probeAddresses({
     required Iterable<String> addresses,
     Duration timeout = defaultDiscoveryTimeout,
@@ -477,98 +479,171 @@ class WizDiscovery {
     InternetAddress? bindAddress,
     int rounds = subnetScanRounds,
   }) async {
-    var targets = addresses.toList();
-    if (targets.isEmpty) return [];
-
-    var socket = await WizProtocol.openBroadcastSocket(
+    await for (var event in probeAddressesStream(
+      addresses: addresses,
+      timeout: timeout,
+      port: port,
       localPort: localPort,
       bindAddress: bindAddress,
-    );
+      rounds: rounds,
+    )) {
+      if (event is ScanDone) return event.lights;
+    }
+    return [];
+  }
 
-    try {
-      // Keyed by MAC: a bulb answers both probes, and the two replies carry
-      // different amounts of detail.
-      var byMac = <String, DiscoveredLight>{};
+  /// Streaming form of [probeAddresses].
+  ///
+  /// Emits a [ScanProgress] after every batch of probes, a [ScanFound] the
+  /// first time a MAC answers, a [ScanUpdated] when a richer reply for that
+  /// MAC lands later, and finally one [ScanDone]. Cancelling the subscription
+  /// stops probing and closes the socket. Each address is probed with both
+  /// `getSystemConfig` and `getPilot` (see [probeAddresses] for why).
+  ///
+  /// [subnet] is only carried through into [ScanProgress.subnet] so a caller
+  /// sweeping a subnet can show it; it does not change what is probed.
+  static Stream<ScanEvent> probeAddressesStream({
+    required Iterable<String> addresses,
+    Duration timeout = defaultDiscoveryTimeout,
+    int port = wizPort,
+    int localPort = wizPort,
+    InternetAddress? bindAddress,
+    int rounds = subnetScanRounds,
+    String? subnet,
+  }) {
+    var targets = addresses.toList();
+    late StreamController<ScanEvent> controller;
+    RawDatagramSocket? socket;
+    var cancelled = false;
 
-      var subscription = socket.listen((event) {
-        if (event != RawSocketEvent.read) return;
-        var datagram = socket.receive();
-        if (datagram == null) return;
-        try {
-          var response =
-              jsonDecode(utf8.decode(datagram.data)) as Map<String, dynamic>;
-          // Requests carry `params`, replies carry `result`; skip our own.
-          if (response.containsKey(keyParams)) return;
+    Future<void> run() async {
+      if (targets.isEmpty) {
+        controller.add(const ScanDone([]));
+        await controller.close();
+        return;
+      }
+      StreamSubscription<RawSocketEvent>? subscription;
+      try {
+        socket = await WizProtocol.openBroadcastSocket(
+          localPort: localPort,
+          bindAddress: bindAddress,
+        );
+        if (cancelled) return;
+        var s = socket!;
 
-          var light = DiscoveredLight.fromJson(
-            response,
-            datagram.address.address,
-          );
-          if (light.mac.isEmpty) return;
+        // Keyed by MAC: a bulb answers both probes, and the two replies carry
+        // different amounts of detail.
+        var byMac = <String, DiscoveredLight>{};
 
-          var known = byMac[light.mac];
-          if (known == null) {
-            byMac[light.mac] = light;
-            WizLogger.info('Found ${light.mac} at ${light.ip}');
-          } else if (known.moduleName == null && light.moduleName != null) {
-            // A getSystemConfig reply landing after a getPilot one: keep the
-            // richer of the two.
-            byMac[light.mac] = light;
+        subscription = s.listen((event) {
+          if (event != RawSocketEvent.read) return;
+          var datagram = s.receive();
+          if (datagram == null) return;
+          try {
+            var response =
+                jsonDecode(utf8.decode(datagram.data)) as Map<String, dynamic>;
+            // Requests carry `params`, replies carry `result`; skip our own.
+            if (response.containsKey(keyParams)) return;
+
+            var light = DiscoveredLight.fromJson(
+              response,
+              datagram.address.address,
+            );
+            if (light.mac.isEmpty) return;
+
+            var known = byMac[light.mac];
+            if (known == null) {
+              byMac[light.mac] = light;
+              WizLogger.info('Found ${light.mac} at ${light.ip}');
+              if (!cancelled) controller.add(ScanFound(light));
+            } else if (known.moduleName == null && light.moduleName != null) {
+              // A getSystemConfig reply landing after a getPilot one: keep
+              // the richer of the two.
+              byMac[light.mac] = light;
+              if (!cancelled) controller.add(ScanUpdated(light));
+            }
+          } catch (_) {
+            // Ignore malformed responses
           }
-        } catch (_) {
-          // Ignore malformed responses
-        }
-      }, onError: _ignoreAsyncSocketError);
+        }, onError: _ignoreAsyncSocketError);
 
-      var probes = [
-        utf8.encode(
-          jsonEncode({keyMethod: methodGetSystemConfig, keyParams: {}}),
-        ),
-        utf8.encode(jsonEncode({keyMethod: methodGetPilot, keyParams: {}})),
-      ];
-      var deadline = DateTime.now().add(timeout);
+        var probes = [
+          utf8.encode(
+            jsonEncode({keyMethod: methodGetSystemConfig, keyParams: {}}),
+          ),
+          utf8.encode(jsonEncode({keyMethod: methodGetPilot, keyParams: {}})),
+        ];
+        var deadline = DateTime.now().add(timeout);
+        var slots = targets.length * rounds;
 
-      for (var round = 0; round < rounds; round++) {
-        if (round > 0) await Future.delayed(subnetScanRoundInterval);
+        for (var round = 0; round < rounds && !cancelled; round++) {
+          if (round > 0) await Future.delayed(subnetScanRoundInterval);
+          if (cancelled) break;
 
-        var unreachable = 0;
-        for (
-          var start = 0;
-          start < targets.length;
-          start += subnetScanBatchSize
-        ) {
-          var batch = targets.skip(start).take(subnetScanBatchSize);
-          for (var ip in batch) {
-            var address = InternetAddress(ip);
-            for (var probe in probes) {
-              // Failures here are reported asynchronously (see
-              // [_ignoreAsyncSocketError]), but guard anyway: a synchronous
-              // throw for one address must not abort the rest.
-              try {
-                socket.send(probe, address, port);
-              } on SocketException {
-                unreachable++;
+          var sent = 0;
+          var unreachable = 0;
+          for (
+            var start = 0;
+            start < targets.length && !cancelled;
+            start += subnetScanBatchSize
+          ) {
+            var batch = targets.skip(start).take(subnetScanBatchSize).toList();
+            for (var ip in batch) {
+              var address = InternetAddress(ip);
+              for (var probe in probes) {
+                // Failures here are reported asynchronously (see
+                // [_ignoreAsyncSocketError]), but guard anyway: a synchronous
+                // throw for one address must not abort the rest.
+                try {
+                  s.send(probe, address, port);
+                } on SocketException {
+                  unreachable++;
+                }
               }
             }
+            sent += batch.length;
+            controller.add(
+              ScanProgress(
+                addressesProbed: round == 0 ? sent : targets.length,
+                addressCount: targets.length,
+                fraction: (round * targets.length + sent) / slots,
+                subnet: subnet,
+              ),
+            );
+            // Let the ARP hold queue drain before queuing the next batch.
+            await Future.delayed(subnetScanBatchInterval);
           }
-          // Let the ARP hold queue drain before queuing the next batch.
-          await Future.delayed(subnetScanBatchInterval);
+          WizLogger.verbose(
+            'Round ${round + 1}/$rounds probed ${targets.length} address(es) '
+            '($unreachable unreachable)',
+          );
         }
-        WizLogger.verbose(
-          'Round ${round + 1}/$rounds probed ${targets.length} address(es) '
-          '($unreachable unreachable)',
-        );
+
+        if (!cancelled) {
+          // Collect for whatever is left of the window.
+          var remaining = deadline.difference(DateTime.now());
+          if (remaining > Duration.zero) await Future.delayed(remaining);
+        }
+        if (!cancelled) controller.add(ScanDone(byMac.values.toList()));
+      } catch (e, st) {
+        if (!cancelled) controller.addError(e, st);
+      } finally {
+        await subscription?.cancel();
+        socket?.close();
+        if (!controller.isClosed) await controller.close();
       }
-
-      // Collect for whatever is left of the window.
-      var remaining = deadline.difference(DateTime.now());
-      if (remaining > Duration.zero) await Future.delayed(remaining);
-
-      await subscription.cancel();
-      return byMac.values.toList();
-    } finally {
-      socket.close();
     }
+
+    controller = StreamController<ScanEvent>(
+      onListen: run,
+      onCancel: () {
+        cancelled = true;
+        // Closing the socket here makes an in-flight send fail fast instead
+        // of the loop running to its next await.
+        socket?.close();
+      },
+    );
+    return controller.stream;
   }
 
   /// Swallows the socket errors that discovery provokes by design.

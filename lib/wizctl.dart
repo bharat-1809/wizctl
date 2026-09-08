@@ -30,5 +30,6 @@ export 'src/light.dart' show WizLight;
 export 'src/logging.dart' show WizLogger, WizLogLevel, WizLogCallback;
 export 'src/retry_config.dart' show RetryConfig, RetryStrategy;
 export 'src/control_signal.dart' show ControlSignal;
+export 'src/scan_event.dart';
 export 'src/scene.dart' show WizScene;
 export 'src/state.dart' show LightState, DiscoveredLight, BulbConfig;
