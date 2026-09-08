@@ -143,4 +143,69 @@ void main() {
       expect((events.single as ScanDone).lights, isEmpty);
     });
   });
+
+  group('WizDiscovery.scanSubnetStream', () {
+    const unusedPort = 39423;
+
+    test(
+      'sweeps a whole /24 with cumulative progress and finishes empty',
+      () async {
+        // TEST-NET-1 is reserved and unroutable, so nothing answers and every
+        // send fails asynchronously; the stream must still progress to the
+        // end and finish with an empty ScanDone.
+        var events = await WizDiscovery.scanSubnetStream(
+          subnet: '192.0.2',
+          port: unusedPort,
+          localPort: 0,
+          timeout: Duration(seconds: 1),
+          rounds: 1,
+        ).toList();
+
+        var progress = events.whereType<ScanProgress>().toList();
+        expect(progress, isNotEmpty);
+        expect(progress.every((p) => p.subnet == '192.0.2'), isTrue);
+        expect(progress.every((p) => p.addressCount == 254), isTrue);
+        for (var i = 1; i < progress.length; i++) {
+          expect(
+            progress[i].addressesProbed,
+            greaterThanOrEqualTo(progress[i - 1].addressesProbed),
+          );
+        }
+        expect(progress.last.addressesProbed, 254);
+        expect(progress.last.fraction, closeTo(1.0, 0.001));
+        expect(events.last, isA<ScanDone>());
+        expect((events.last as ScanDone).lights, isEmpty);
+      },
+    );
+
+    test('scanSubnet still returns the collected list', () async {
+      var lights = await WizDiscovery.scanSubnet(
+        subnet: '192.0.2',
+        port: unusedPort,
+        localPort: 0,
+        timeout: Duration(seconds: 1),
+        rounds: 1,
+      );
+      expect(lights, isEmpty);
+    });
+
+    test('cancelling a sweep completes without a ScanDone', () async {
+      var received = <ScanEvent>[];
+      var subscription = WizDiscovery.scanSubnetStream(
+        subnet: '192.0.2',
+        port: unusedPort,
+        localPort: 0,
+        timeout: Duration(seconds: 1),
+        rounds: 1,
+      ).listen(received.add);
+      await Future.delayed(Duration(milliseconds: 600));
+      await subscription.cancel();
+      await Future.delayed(Duration(seconds: 2));
+      expect(received.whereType<ScanDone>(), isEmpty);
+      expect(
+        received.whereType<ScanProgress>().last.addressesProbed,
+        lessThan(254),
+      );
+    });
+  });
 }
