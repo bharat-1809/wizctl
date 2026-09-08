@@ -73,12 +73,13 @@ void main() {
     test(
       'reports an updated light when the richer reply lands later',
       () async {
-        // getSystemConfig and getPilot are both sent; whichever answers second
-        // that carries more detail must surface as ScanUpdated, and ScanDone
-        // must hold the richer record.
+        // Delay the getSystemConfig reply so getPilot answers first: the
+        // ScanFound must carry no moduleName, and the later, richer reply
+        // must surface as ScanUpdated.
         var bulb = await FakeBulb.start(
           listenPort: bulbPort,
           replyMode: ReplyMode.sourcePort,
+          replyDelays: {methodGetSystemConfig: Duration(milliseconds: 150)},
         );
         addTearDown(bulb.close);
 
@@ -90,12 +91,15 @@ void main() {
           rounds: 1,
         ).toList();
 
+        var found = events.whereType<ScanFound>().single;
+        expect(found.light.moduleName, isNull);
+
+        var updated = events.whereType<ScanUpdated>().single;
+        expect(updated.light.moduleName, 'ESP01_SHRGB_03');
+        expect(updated.light.mac, 'a8bb50aabbcc');
+
         var done = events.last as ScanDone;
         expect(done.lights.single.moduleName, 'ESP01_SHRGB_03');
-        var found = events.whereType<ScanFound>().single;
-        if (found.light.moduleName == null) {
-          expect(events.whereType<ScanUpdated>(), isNotEmpty);
-        }
       },
     );
 

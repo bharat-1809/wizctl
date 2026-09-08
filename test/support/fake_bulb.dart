@@ -42,6 +42,10 @@ class FakeBulb {
     // A bulb in Wi-Fi power save loses the first datagrams sent to it;
     // dropping requests models that so retry behaviour can be tested.
     int ignoreFirst = 0,
+    // A real bulb's getSystemConfig reply can land after its getPilot one;
+    // delaying a method's reply lets a test force that ordering instead of
+    // relying on whichever the OS happens to deliver first.
+    Map<String, Duration> replyDelays = const {},
   }) async {
     var socket = await RawDatagramSocket.bind(
       InternetAddress.loopbackIPv4,
@@ -92,7 +96,15 @@ class FakeBulb {
       var target = replyMode == ReplyMode.sourcePort
           ? datagram.port
           : replyToPort;
-      socket.send(reply, datagram.address, target);
+      var delay = replyDelays[method];
+      if (delay == null) {
+        socket.send(reply, datagram.address, target);
+      } else {
+        Future.delayed(
+          delay,
+          () => socket.send(reply, datagram.address, target),
+        );
+      }
     }, onError: (Object _) {});
 
     return bulb;
