@@ -1,93 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:wizctl/wizctl.dart';
 
-/// How a bulb's firmware decides where to send its registration reply.
-enum ReplyMode {
-  /// Replies to the source port of the datagram it received.
-  sourcePort,
-
-  /// Replies to a well-known port on the sender's IP, ignoring the source
-  /// port. This is what real WiZ firmware does with the WiZ port (38899).
-  fixedPort,
-}
-
-/// A stand-in for a WiZ bulb that answers `registration` broadcasts.
-///
-/// Tests talk to it over loopback so they don't depend on a real network.
-class FakeBulb {
-  final RawDatagramSocket _socket;
-  final String mac;
-
-  /// Number of `registration` requests this bulb has received.
-  int requestCount = 0;
-
-  FakeBulb._(this._socket, this.mac);
-
-  int get port => _socket.port;
-
-  static Future<FakeBulb> start({
-    required int listenPort,
-    required ReplyMode replyMode,
-    int replyToPort = 0,
-    String mac = 'a8bb50aabbcc',
-    Set<String> supportedMethods = const {
-      methodRegistration,
-      methodGetSystemConfig,
-      methodGetPilot,
-    },
-  }) async {
-    var socket = await RawDatagramSocket.bind(
-      InternetAddress.loopbackIPv4,
-      listenPort,
-      reuseAddress: true,
-      reusePort: true,
-    );
-    socket.broadcastEnabled = true;
-    var bulb = FakeBulb._(socket, mac);
-
-    socket.listen((event) {
-      if (event != RawSocketEvent.read) return;
-      var datagram = socket.receive();
-      if (datagram == null) return;
-
-      Map<String, dynamic> request;
-      try {
-        request =
-            jsonDecode(utf8.decode(datagram.data)) as Map<String, dynamic>;
-      } catch (_) {
-        return;
-      }
-      // Only answer requests; never react to a reply (avoids a self-send loop
-      // when the bulb and the reply port are the same socket).
-      var method = request[keyMethod];
-      if (method is! String || !supportedMethods.contains(method)) return;
-      if (request.containsKey(keyResult)) return;
-      bulb.requestCount++;
-
-      // getPilot carries the MAC but no module name; getSystemConfig has both.
-      var result = <String, dynamic>{keyMac: mac, 'success': true};
-      if (method != methodGetPilot) {
-        result[keyModuleName] = 'ESP01_SHRGB_03';
-      }
-
-      var reply = utf8.encode(
-        jsonEncode({keyMethod: method, 'env': 'pro', keyResult: result}),
-      );
-      var target = replyMode == ReplyMode.sourcePort
-          ? datagram.port
-          : replyToPort;
-      socket.send(reply, datagram.address, target);
-    });
-
-    return bulb;
-  }
-
-  void close() => _socket.close();
-}
+import 'support/fake_bulb.dart';
 
 void main() {
   group('WizDiscovery.discover', () {
