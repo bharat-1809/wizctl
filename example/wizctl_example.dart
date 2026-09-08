@@ -48,11 +48,24 @@ void main() async {
   // is unaffected, so sweep the subnet one address at a time instead.
   if (discovered.isEmpty) {
     print('Broadcast found nothing, scanning the subnet...');
-    discovered = await WizDiscovery.scanSubnet(
+    // scanSubnet() returns the same list in one go; the streaming form
+    // reports progress and lights as they answer, which suits a progress bar.
+    await for (var event in WizDiscovery.scanSubnetStream(
       timeout: Duration(seconds: 5),
       // Defaults to this machine's own /24; pass e.g. subnet: '192.168.1'
       // to search a different one.
-    );
+    )) {
+      switch (event) {
+        case ScanProgress p:
+          print('Probed ${p.addressesProbed} of ${p.addressCount}');
+        case ScanFound f:
+          print('Found ${f.light.ip} (${f.light.mac})');
+        case ScanUpdated _:
+          break;
+        case ScanDone d:
+          discovered = d.lights;
+      }
+    }
   }
 
   // Once you know where a light lives, ask it directly. This is quicker than a
@@ -80,21 +93,6 @@ void main() async {
       print('    Type: ${light.bulbClass!.displayName}');
       print('    Supports color: ${light.supportsColor}');
       print('    Supports temperature: ${light.supportsTemperature}');
-    }
-  }
-
-  // The streaming form suits a UI progress bar, and a sweep is only worth
-  // its cost when broadcast found nothing.
-  if (discovered.isEmpty) {
-    // Streaming discovery: progress and lights as they answer
-    await for (var event in WizDiscovery.scanSubnetStream(
-      timeout: Duration(seconds: 3),
-    )) {
-      if (event is ScanProgress) {
-        print('Probed ${event.addressesProbed} of ${event.addressCount}');
-      } else if (event is ScanFound) {
-        print('Found ${event.light.ip} (${event.light.mac})');
-      }
     }
   }
 
