@@ -156,6 +156,8 @@ await for (var event in WizDiscovery.scanSubnetStream()) {
       break;
     case ScanDone d:
       print('${d.lights.length} lights');
+    case ScanFailed f:
+      print('Could not probe ${f.addressRange}: ${f.error}');
   }
 }
 ```

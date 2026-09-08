@@ -4,6 +4,11 @@ import 'state.dart';
 ///
 /// Consumers that only want the result can wait for [ScanDone]; a UI can show
 /// [ScanProgress] as a determinate bar and list lights as [ScanFound] arrives.
+///
+/// This hierarchy is sealed and closed: a new subtype added in a future
+/// release is a breaking change for any exhaustive `switch` over [ScanEvent].
+/// Consumers who want forward compatibility with new event types should add a
+/// `_` fallback case instead of switching exhaustively.
 sealed class ScanEvent {
   const ScanEvent();
 }
@@ -53,4 +58,17 @@ final class ScanUpdated extends ScanEvent {
 final class ScanDone extends ScanEvent {
   final List<DiscoveredLight> lights;
   const ScanDone(this.lights);
+}
+
+/// A chunk of a subnet sweep could not be probed (for example the socket
+/// failed to bind). The sweep continues with the remaining chunks, so a later
+/// [ScanDone] may be partial.
+final class ScanFailed extends ScanEvent {
+  /// The addresses in the failed chunk, e.g. `'192.168.1.65-192.168.1.128'`.
+  final String addressRange;
+  final Object error;
+  const ScanFailed({required this.addressRange, required this.error});
+
+  @override
+  String toString() => 'ScanFailed($addressRange: $error)';
 }

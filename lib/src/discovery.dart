@@ -498,6 +498,10 @@ class WizDiscovery {
                       controller.add(u);
                     case ScanDone _:
                       break;
+                    case ScanFailed _:
+                      // probeAddressesStream never emits this; kept only so
+                      // the switch stays exhaustive if that changes.
+                      break;
                   }
                 },
                 onError: (Object e) {
@@ -507,6 +511,14 @@ class WizDiscovery {
                   WizLogger.warn(
                     'Scan chunk ${chunk.first}-${chunk.last} failed: $e',
                   );
+                  if (!cancelled) {
+                    controller.add(
+                      ScanFailed(
+                        addressRange: '${chunk.first}-${chunk.last}',
+                        error: e,
+                      ),
+                    );
+                  }
                   if (!chunkDone!.isCompleted) chunkDone!.complete();
                 },
                 onDone: () {
@@ -517,7 +529,19 @@ class WizDiscovery {
           await chunkDone!.future;
           probedBefore += chunk.length;
         }
-        if (!cancelled) controller.add(ScanDone(byMac.values.toList()));
+        if (!cancelled) {
+          // A failed final chunk would otherwise leave progress short of
+          // full, so pin it to 100% before signalling completion.
+          controller.add(
+            ScanProgress(
+              addressesProbed: addresses.length,
+              addressCount: addresses.length,
+              fraction: 1.0,
+              subnet: base,
+            ),
+          );
+          controller.add(ScanDone(byMac.values.toList()));
+        }
       } catch (e, st) {
         if (!cancelled) controller.addError(e, st);
       } finally {

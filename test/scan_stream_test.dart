@@ -6,6 +6,22 @@ import 'package:wizctl/wizctl.dart';
 import 'support/fake_bulb.dart';
 
 void main() {
+  group('ScanFailed', () {
+    test('carries the address range and error, and formats both', () {
+      var event = ScanFailed(
+        addressRange: '192.168.1.65-192.168.1.128',
+        error: 'socket failed to bind',
+      );
+
+      expect(event.addressRange, '192.168.1.65-192.168.1.128');
+      expect(event.error, 'socket failed to bind');
+      expect(
+        event.toString(),
+        'ScanFailed(192.168.1.65-192.168.1.128: socket failed to bind)',
+      );
+    });
+  });
+
   group('WizDiscovery.probeAddressesStream', () {
     const bulbPort = 39421;
     const replyPort = 39422;

@@ -64,6 +64,8 @@ void main() async {
           break;
         case ScanDone d:
           discovered = d.lights;
+        case ScanFailed f:
+          print('Could not probe ${f.addressRange}: ${f.error}');
       }
     }
   }
