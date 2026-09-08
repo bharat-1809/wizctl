@@ -199,7 +199,7 @@ const String errorWhiteRange =
 // =============================================================================
 
 /// CLI tool version.
-const String cliVersion = '1.0.0';
+const String cliVersion = '1.1.0';
 
 /// CLI tool name.
 const String cliName = 'wizctl';

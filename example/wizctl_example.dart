@@ -83,6 +83,17 @@ void main() async {
     }
   }
 
+  // Streaming discovery: progress and lights as they answer
+  await for (var event in WizDiscovery.scanSubnetStream(
+    timeout: Duration(seconds: 3),
+  )) {
+    if (event is ScanProgress) {
+      print('Probed ${event.addressesProbed} of ${event.addressCount}');
+    } else if (event is ScanFound) {
+      print('Found ${event.light.ip} (${event.light.mac})');
+    }
+  }
+
   // ==========================================================================
   // Individual Light Control
   // ==========================================================================

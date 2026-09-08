@@ -82,6 +82,19 @@ await light.send(
     b: 50,
   ),
 );
+
+// Blink to identify: capture, drive, restore
+final captured = await light.getState();
+await light.send(ControlSignal(state: true, r: 255, g: 176, b: 32, dimming: 100));
+await Future.delayed(Duration(seconds: 2));
+await light.send(ControlSignal.fromState(captured));
+
+// Tighter retries for an interactive client
+final quick = WizLight(
+  '192.168.1.100',
+  timeout: Duration(seconds: 1),
+  retry: RetryConfig.exponential(count: 2, initialInterval: Duration(milliseconds: 250), maxInterval: Duration(seconds: 1)),
+);
 ```
 
 
@@ -128,6 +141,23 @@ wizctl discover --scan --subnet 192.168.1   # a subnet other than yours
 
 ```dart
 final lights = await WizDiscovery.scanSubnet(subnet: '192.168.1');
+```
+
+For a progress bar and lights as they answer, use the streaming form:
+
+```dart
+await for (var event in WizDiscovery.scanSubnetStream()) {
+  switch (event) {
+    case ScanProgress p:
+      print('${p.addressesProbed} of ${p.addressCount} addresses');
+    case ScanFound f:
+      print('Found ${f.light.ip}');
+    case ScanUpdated _:
+      break;
+    case ScanDone d:
+      print('${d.lights.length} lights');
+  }
+}
 ```
 
 The scan assumes a /24 and probes each address twice, since the first datagram
