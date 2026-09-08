@@ -415,6 +415,9 @@ class WizDiscovery {
   /// chunks of [subnetScanChunkSize] addresses on fresh sockets. A chunk that
   /// fails outright is logged and skipped so lights already found are kept.
   /// Cancelling the subscription stops the sweep.
+  ///
+  /// The scan starts when you listen, and the stream is single-subscription —
+  /// wrap it with `asBroadcastStream()` if more than one listener is needed.
   static Stream<ScanEvent> scanSubnetStream({
     String? subnet,
     Duration timeout = defaultDiscoveryTimeout,
@@ -617,6 +620,9 @@ class WizDiscovery {
   ///
   /// [subnet] is only carried through into [ScanProgress.subnet] so a caller
   /// sweeping a subnet can show it; it does not change what is probed.
+  ///
+  /// The scan starts when you listen, and the stream is single-subscription —
+  /// wrap it with `asBroadcastStream()` if more than one listener is needed.
   static Stream<ScanEvent> probeAddressesStream({
     required Iterable<String> addresses,
     Duration timeout = defaultDiscoveryTimeout,
@@ -753,8 +759,10 @@ class WizDiscovery {
       onListen: run,
       onCancel: () {
         cancelled = true;
-        // Closing the socket here makes an in-flight send fail fast instead
-        // of the loop running to its next await.
+        // Closing the socket makes any remaining sends in this round no-ops
+        // (RawDatagramSocket.send returns 0 on a closed socket rather than
+        // throwing), so probing stops immediately instead of continuing on
+        // to the next await.
         socket?.close();
       },
     );

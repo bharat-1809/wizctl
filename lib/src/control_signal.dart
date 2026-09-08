@@ -67,6 +67,9 @@ class ControlSignal {
   /// this never throws: brightness to 10–100, speed to 10–200. A colour
   /// temperature outside 1000–10000 K is dropped. A scene id the library does
   /// not know is ignored the same way.
+  ///
+  /// [LightState.ratio] (the warm/cold split on dual-white bulbs) is not
+  /// restored.
   factory ControlSignal.fromState(LightState state) {
     var dimming = state.dimming?.clamp(minBrightness, maxBrightness);
     var scene = state.sceneId;

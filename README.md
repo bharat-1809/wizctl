@@ -192,8 +192,16 @@ final lights = await WizDiscovery.discover(
   ),
 );
 
-// Protocol requests also support retry config
-// (uses exponential backoff by default)
+// A light can also carry its own retry config; every request it sends uses it
+final light = WizLight(
+  '192.168.1.100',
+  timeout: Duration(seconds: 1),
+  retry: RetryConfig.exponential(
+    count: 2,
+    initialInterval: Duration(milliseconds: 250),
+    maxInterval: Duration(seconds: 1),
+  ),
+);
 ```
 
 ## Debugging

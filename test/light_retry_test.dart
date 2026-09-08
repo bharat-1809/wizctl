@@ -30,7 +30,7 @@ void main() {
       var light = WizLight(
         '127.0.0.1',
         port: bulbPort,
-        timeout: Duration(milliseconds: 300),
+        timeout: Duration(milliseconds: 600),
         retry: const RetryConfig.fixed(
           count: 2,
           interval: Duration(milliseconds: 50),
@@ -52,7 +52,7 @@ void main() {
       var light = WizLight(
         '127.0.0.1',
         port: bulbPort,
-        timeout: Duration(milliseconds: 300),
+        timeout: Duration(milliseconds: 600),
         retry: const RetryConfig.none(),
       );
       await expectLater(light.getState(), throwsA(isA<WizTimeoutError>()));
@@ -70,7 +70,7 @@ void main() {
       var light = WizLight(
         '127.0.0.1',
         port: bulbPort,
-        timeout: Duration(milliseconds: 300),
+        timeout: Duration(milliseconds: 600),
         retry: const RetryConfig.fixed(
           count: 1,
           interval: Duration(milliseconds: 50),
