@@ -553,6 +553,12 @@ class WizDiscovery {
   /// `net.link.ether.inet.prune_intvl`, so a sweep can stay unproductive for
   /// minutes afterwards. Probing addresses you already know never fills it.
   ///
+  /// Each address is probed with both `getSystemConfig` and `getPilot`.
+  /// `getSystemConfig` is the richer answer — module name and firmware version
+  /// as well as the MAC — but it is not implemented by every firmware version,
+  /// and `getPilot` carries the MAC too. Probing with both means an older bulb
+  /// still turns up, just with less detail.
+  ///
   /// Prefer this for lights already in a config file, and fall back to
   /// [scanSubnet] to find ones you have not seen before. For progress and
   /// lights as they answer, use [probeAddressesStream].
