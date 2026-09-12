@@ -7,6 +7,7 @@ import 'exceptions.dart';
 import 'logging.dart';
 import 'protocol.dart';
 import 'retry_config.dart';
+import 'scan_event.dart';
 import 'state.dart';
 
 /// Discovers WiZ lights on the local network.
@@ -378,31 +379,13 @@ class WizDiscovery {
   /// of the WiZ protocol can find those lights by broadcasting, while asking
   /// each address in turn works reliably.
   ///
-  /// Each address is probed with both `getSystemConfig` and `getPilot`.
-  /// `getSystemConfig` is the richer answer — module name and firmware version
-  /// as well as the MAC — but it is not implemented by every firmware version,
-  /// and `getPilot` carries the MAC too. Probing with both means an older bulb
-  /// still turns up, just with less detail.
-  ///
-  /// **Parameters:**
-  ///
-  /// [subnet] - The first three octets to scan, e.g. `'192.168.0'`. Defaults to
-  ///   the subnet of this machine's own address. Note the /24 assumption:
-  ///   Dart's [NetworkInterface] does not expose netmasks, so a network wider
-  ///   than /24 has to be scanned a /24 at a time.
-  ///
-  /// [timeout] - Total time budget. Probes go out at the start of the window
-  ///   and replies are collected until it expires, so allow a few seconds.
-  ///
-  /// [rounds] - How many times to probe each address. Defaults to 2, and going
-  ///   below that is unwise: with a cold ARP cache the kernel drops the first
-  ///   datagram to each host while it resolves the MAC, so a single round
-  ///   misses lights it has never talked to.
-  ///
-  /// Probes go out in batches (see [subnetScanBatchSize]), so sweeping a /24
-  /// takes several seconds per round whatever [timeout] says. Replies are
-  /// collected throughout, and [timeout] only governs how long to keep
-  /// listening after the last probe.
+  /// [subnet] is the first three octets to scan, e.g. `'192.168.0'`, and
+  /// defaults to this machine's own subnet (a /24 is assumed: Dart's
+  /// [NetworkInterface] does not expose netmasks). [rounds] defaults to 2 so
+  /// a cold ARP cache does not hide lights. Probes go out in batches (see
+  /// [subnetScanBatchSize]), so a /24 takes several seconds per round whatever
+  /// [timeout] says; [timeout] governs how long to keep listening after the
+  /// last probe of each chunk. For progress use [scanSubnetStream].
   ///
   /// **Returns:** The lights that answered, deduplicated by MAC address.
   static Future<List<DiscoveredLight>> scanSubnet({
@@ -413,46 +396,176 @@ class WizDiscovery {
     InternetAddress? bindAddress,
     int rounds = subnetScanRounds,
   }) async {
-    var base = subnet ?? await _defaultSubnetBase();
-    if (base == null) {
-      throw WizConnectionError('Could not determine a local subnet to scan');
+    await for (var event in scanSubnetStream(
+      subnet: subnet,
+      timeout: timeout,
+      port: port,
+      localPort: localPort,
+      bindAddress: bindAddress,
+      rounds: rounds,
+    )) {
+      if (event is ScanDone) return event.lights;
     }
+    return [];
+  }
 
-    var skip = await _localAddresses();
-    var addresses = [
-      for (var host = 1; host <= 254; host++)
-        if (!skip.contains('$base.$host')) '$base.$host',
-    ];
+  /// Streaming form of [scanSubnet].
+  ///
+  /// Progress is cumulative over the whole /24 even though the sweep runs in
+  /// chunks of [subnetScanChunkSize] addresses on fresh sockets. A chunk that
+  /// fails outright is logged and skipped so lights already found are kept.
+  /// Cancelling the subscription stops the sweep.
+  ///
+  /// The scan starts when you listen, and the stream is single-subscription —
+  /// wrap it with `asBroadcastStream()` if more than one listener is needed.
+  static Stream<ScanEvent> scanSubnetStream({
+    String? subnet,
+    Duration timeout = defaultDiscoveryTimeout,
+    int port = wizPort,
+    int localPort = wizPort,
+    InternetAddress? bindAddress,
+    int rounds = subnetScanRounds,
+  }) {
+    late StreamController<ScanEvent> controller;
+    StreamSubscription<ScanEvent>? inner;
+    // Hoisted so onCancel can complete whichever chunk is currently in
+    // flight; without this, cancelling while a chunk is running leaves
+    // run()'s `await chunkDone.future` waiting forever, because
+    // StreamSubscription.cancel() suppresses both onDone and onError.
+    Completer<void>? chunkDone;
+    var cancelled = false;
 
-    WizLogger.info('Scanning $base.1-254 on port $port');
-
-    // One socket per chunk: see [subnetScanChunkSize].
-    var byMac = <String, DiscoveredLight>{};
-    for (
-      var start = 0;
-      start < addresses.length;
-      start += subnetScanChunkSize
-    ) {
-      var chunk = addresses.skip(start).take(subnetScanChunkSize).toList();
+    Future<void> run() async {
       try {
-        var found = await probeAddresses(
-          addresses: chunk,
-          timeout: timeout,
-          port: port,
-          localPort: localPort,
-          bindAddress: bindAddress,
-          rounds: rounds,
-        );
-        for (var light in found) {
-          byMac.putIfAbsent(light.mac, () => light);
+        var base = subnet ?? await _defaultSubnetBase();
+        if (base == null) {
+          throw WizConnectionError(
+            'Could not determine a local subnet to scan',
+          );
         }
-      } catch (e) {
-        // A chunk that fails outright must not lose the ones already found.
-        WizLogger.warn('Scan chunk ${chunk.first}-${chunk.last} failed: $e');
+        var skip = await _localAddresses();
+        var addresses = [
+          for (var host = 1; host <= 254; host++)
+            if (!skip.contains('$base.$host')) '$base.$host',
+        ];
+        WizLogger.info('Scanning $base.1-254 on port $port');
+
+        var byMac = <String, DiscoveredLight>{};
+        var probedBefore = 0;
+        for (
+          var start = 0;
+          start < addresses.length && !cancelled;
+          start += subnetScanChunkSize
+        ) {
+          var chunk = addresses.skip(start).take(subnetScanChunkSize).toList();
+          // Forward the chunk's events, rebasing progress onto the whole
+          // address list. A completer bridges the inner subscription so
+          // cancellation can reach it.
+          chunkDone = Completer<void>();
+          inner =
+              probeAddressesStream(
+                addresses: chunk,
+                timeout: timeout,
+                port: port,
+                localPort: localPort,
+                bindAddress: bindAddress,
+                rounds: rounds,
+                subnet: base,
+              ).listen(
+                (event) {
+                  if (cancelled) return;
+                  switch (event) {
+                    case ScanProgress p:
+                      controller.add(
+                        ScanProgress(
+                          addressesProbed: probedBefore + p.addressesProbed,
+                          addressCount: addresses.length,
+                          fraction:
+                              (probedBefore + p.fraction * chunk.length) /
+                              addresses.length,
+                          subnet: base,
+                        ),
+                      );
+                    case ScanFound f:
+                      var known = byMac[f.light.mac];
+                      if (known == null) {
+                        byMac[f.light.mac] = f.light;
+                        controller.add(f);
+                      } else if (known.moduleName == null &&
+                          f.light.moduleName != null) {
+                        byMac[f.light.mac] = f.light;
+                        controller.add(ScanUpdated(f.light));
+                      }
+                    case ScanUpdated u:
+                      byMac[u.light.mac] = u.light;
+                      controller.add(u);
+                    case ScanDone _:
+                      break;
+                    case ScanFailed _:
+                      // probeAddressesStream never emits this; kept only so
+                      // the switch stays exhaustive if that changes.
+                      break;
+                  }
+                },
+                onError: (Object e) {
+                  // A chunk that fails outright must not lose the ones already
+                  // found. When cancelOnError fires, onDone is not called, so
+                  // the completer must be completed here too.
+                  WizLogger.warn(
+                    'Scan chunk ${chunk.first}-${chunk.last} failed: $e',
+                  );
+                  if (!cancelled) {
+                    controller.add(
+                      ScanFailed(
+                        addressRange: '${chunk.first}-${chunk.last}',
+                        error: e,
+                      ),
+                    );
+                  }
+                  if (!chunkDone!.isCompleted) chunkDone!.complete();
+                },
+                onDone: () {
+                  if (!chunkDone!.isCompleted) chunkDone!.complete();
+                },
+                cancelOnError: true,
+              );
+          await chunkDone!.future;
+          probedBefore += chunk.length;
+        }
+        if (!cancelled) {
+          // A failed final chunk would otherwise leave progress short of
+          // full, so pin it to 100% before signalling completion.
+          controller.add(
+            ScanProgress(
+              addressesProbed: addresses.length,
+              addressCount: addresses.length,
+              fraction: 1.0,
+              subnet: base,
+            ),
+          );
+          controller.add(ScanDone(byMac.values.toList()));
+        }
+      } catch (e, st) {
+        if (!cancelled) controller.addError(e, st);
+      } finally {
+        if (!controller.isClosed) await controller.close();
       }
     }
 
-    return byMac.values.toList();
+    controller = StreamController<ScanEvent>(
+      onListen: run,
+      onCancel: () async {
+        cancelled = true;
+        await inner?.cancel();
+        // inner.cancel() suppresses onDone/onError, so run()'s await would
+        // hang forever without this: complete the current chunk's completer
+        // ourselves so run() can notice `cancelled` and return.
+        if (chunkDone != null && !chunkDone!.isCompleted) {
+          chunkDone!.complete();
+        }
+      },
+    );
+    return controller.stream;
   }
 
   /// Asks specific addresses whether a light is listening there.
@@ -467,8 +580,15 @@ class WizDiscovery {
   /// `net.link.ether.inet.prune_intvl`, so a sweep can stay unproductive for
   /// minutes afterwards. Probing addresses you already know never fills it.
   ///
+  /// Each address is probed with both `getSystemConfig` and `getPilot`.
+  /// `getSystemConfig` is the richer answer — module name and firmware version
+  /// as well as the MAC — but it is not implemented by every firmware version,
+  /// and `getPilot` carries the MAC too. Probing with both means an older bulb
+  /// still turns up, just with less detail.
+  ///
   /// Prefer this for lights already in a config file, and fall back to
-  /// [scanSubnet] to find ones you have not seen before.
+  /// [scanSubnet] to find ones you have not seen before. For progress and
+  /// lights as they answer, use [probeAddressesStream].
   static Future<List<DiscoveredLight>> probeAddresses({
     required Iterable<String> addresses,
     Duration timeout = defaultDiscoveryTimeout,
@@ -477,98 +597,176 @@ class WizDiscovery {
     InternetAddress? bindAddress,
     int rounds = subnetScanRounds,
   }) async {
-    var targets = addresses.toList();
-    if (targets.isEmpty) return [];
-
-    var socket = await WizProtocol.openBroadcastSocket(
+    await for (var event in probeAddressesStream(
+      addresses: addresses,
+      timeout: timeout,
+      port: port,
       localPort: localPort,
       bindAddress: bindAddress,
-    );
+      rounds: rounds,
+    )) {
+      if (event is ScanDone) return event.lights;
+    }
+    return [];
+  }
 
-    try {
-      // Keyed by MAC: a bulb answers both probes, and the two replies carry
-      // different amounts of detail.
-      var byMac = <String, DiscoveredLight>{};
+  /// Streaming form of [probeAddresses].
+  ///
+  /// Emits a [ScanProgress] after every batch of probes, a [ScanFound] the
+  /// first time a MAC answers, a [ScanUpdated] when a richer reply for that
+  /// MAC lands later, and finally one [ScanDone]. Cancelling the subscription
+  /// stops probing and closes the socket. Each address is probed with both
+  /// `getSystemConfig` and `getPilot` (see [probeAddresses] for why).
+  ///
+  /// [subnet] is only carried through into [ScanProgress.subnet] so a caller
+  /// sweeping a subnet can show it; it does not change what is probed.
+  ///
+  /// The scan starts when you listen, and the stream is single-subscription —
+  /// wrap it with `asBroadcastStream()` if more than one listener is needed.
+  static Stream<ScanEvent> probeAddressesStream({
+    required Iterable<String> addresses,
+    Duration timeout = defaultDiscoveryTimeout,
+    int port = wizPort,
+    int localPort = wizPort,
+    InternetAddress? bindAddress,
+    int rounds = subnetScanRounds,
+    String? subnet,
+  }) {
+    var targets = addresses.toList();
+    late StreamController<ScanEvent> controller;
+    RawDatagramSocket? socket;
+    var cancelled = false;
 
-      var subscription = socket.listen((event) {
-        if (event != RawSocketEvent.read) return;
-        var datagram = socket.receive();
-        if (datagram == null) return;
-        try {
-          var response =
-              jsonDecode(utf8.decode(datagram.data)) as Map<String, dynamic>;
-          // Requests carry `params`, replies carry `result`; skip our own.
-          if (response.containsKey(keyParams)) return;
+    Future<void> run() async {
+      if (targets.isEmpty) {
+        controller.add(const ScanDone([]));
+        await controller.close();
+        return;
+      }
+      StreamSubscription<RawSocketEvent>? subscription;
+      try {
+        socket = await WizProtocol.openBroadcastSocket(
+          localPort: localPort,
+          bindAddress: bindAddress,
+        );
+        if (cancelled) return;
+        var s = socket!;
 
-          var light = DiscoveredLight.fromJson(
-            response,
-            datagram.address.address,
-          );
-          if (light.mac.isEmpty) return;
+        // Keyed by MAC: a bulb answers both probes, and the two replies carry
+        // different amounts of detail.
+        var byMac = <String, DiscoveredLight>{};
 
-          var known = byMac[light.mac];
-          if (known == null) {
-            byMac[light.mac] = light;
-            WizLogger.info('Found ${light.mac} at ${light.ip}');
-          } else if (known.moduleName == null && light.moduleName != null) {
-            // A getSystemConfig reply landing after a getPilot one: keep the
-            // richer of the two.
-            byMac[light.mac] = light;
+        subscription = s.listen((event) {
+          if (event != RawSocketEvent.read) return;
+          var datagram = s.receive();
+          if (datagram == null) return;
+          try {
+            var response =
+                jsonDecode(utf8.decode(datagram.data)) as Map<String, dynamic>;
+            // Requests carry `params`, replies carry `result`; skip our own.
+            if (response.containsKey(keyParams)) return;
+
+            var light = DiscoveredLight.fromJson(
+              response,
+              datagram.address.address,
+            );
+            if (light.mac.isEmpty) return;
+
+            var known = byMac[light.mac];
+            if (known == null) {
+              byMac[light.mac] = light;
+              WizLogger.info('Found ${light.mac} at ${light.ip}');
+              if (!cancelled) controller.add(ScanFound(light));
+            } else if (known.moduleName == null && light.moduleName != null) {
+              // A getSystemConfig reply landing after a getPilot one: keep
+              // the richer of the two.
+              byMac[light.mac] = light;
+              if (!cancelled) controller.add(ScanUpdated(light));
+            }
+          } catch (_) {
+            // Ignore malformed responses
           }
-        } catch (_) {
-          // Ignore malformed responses
-        }
-      }, onError: _ignoreAsyncSocketError);
+        }, onError: _ignoreAsyncSocketError);
 
-      var probes = [
-        utf8.encode(
-          jsonEncode({keyMethod: methodGetSystemConfig, keyParams: {}}),
-        ),
-        utf8.encode(jsonEncode({keyMethod: methodGetPilot, keyParams: {}})),
-      ];
-      var deadline = DateTime.now().add(timeout);
+        var probes = [
+          utf8.encode(
+            jsonEncode({keyMethod: methodGetSystemConfig, keyParams: {}}),
+          ),
+          utf8.encode(jsonEncode({keyMethod: methodGetPilot, keyParams: {}})),
+        ];
+        var deadline = DateTime.now().add(timeout);
+        var slots = targets.length * rounds;
 
-      for (var round = 0; round < rounds; round++) {
-        if (round > 0) await Future.delayed(subnetScanRoundInterval);
+        for (var round = 0; round < rounds && !cancelled; round++) {
+          if (round > 0) await Future.delayed(subnetScanRoundInterval);
+          if (cancelled) break;
 
-        var unreachable = 0;
-        for (
-          var start = 0;
-          start < targets.length;
-          start += subnetScanBatchSize
-        ) {
-          var batch = targets.skip(start).take(subnetScanBatchSize);
-          for (var ip in batch) {
-            var address = InternetAddress(ip);
-            for (var probe in probes) {
-              // Failures here are reported asynchronously (see
-              // [_ignoreAsyncSocketError]), but guard anyway: a synchronous
-              // throw for one address must not abort the rest.
-              try {
-                socket.send(probe, address, port);
-              } on SocketException {
-                unreachable++;
+          var sent = 0;
+          var unreachable = 0;
+          for (
+            var start = 0;
+            start < targets.length && !cancelled;
+            start += subnetScanBatchSize
+          ) {
+            var batch = targets.skip(start).take(subnetScanBatchSize).toList();
+            for (var ip in batch) {
+              var address = InternetAddress(ip);
+              for (var probe in probes) {
+                // Failures here are reported asynchronously (see
+                // [_ignoreAsyncSocketError]), but guard anyway: a synchronous
+                // throw for one address must not abort the rest.
+                try {
+                  s.send(probe, address, port);
+                } on SocketException {
+                  unreachable++;
+                }
               }
             }
+            sent += batch.length;
+            controller.add(
+              ScanProgress(
+                addressesProbed: round == 0 ? sent : targets.length,
+                addressCount: targets.length,
+                fraction: (round * targets.length + sent) / slots,
+                subnet: subnet,
+              ),
+            );
+            // Let the ARP hold queue drain before queuing the next batch.
+            await Future.delayed(subnetScanBatchInterval);
           }
-          // Let the ARP hold queue drain before queuing the next batch.
-          await Future.delayed(subnetScanBatchInterval);
+          WizLogger.verbose(
+            'Round ${round + 1}/$rounds probed ${targets.length} address(es) '
+            '($unreachable unreachable)',
+          );
         }
-        WizLogger.verbose(
-          'Round ${round + 1}/$rounds probed ${targets.length} address(es) '
-          '($unreachable unreachable)',
-        );
+
+        if (!cancelled) {
+          // Collect for whatever is left of the window.
+          var remaining = deadline.difference(DateTime.now());
+          if (remaining > Duration.zero) await Future.delayed(remaining);
+        }
+        if (!cancelled) controller.add(ScanDone(byMac.values.toList()));
+      } catch (e, st) {
+        if (!cancelled) controller.addError(e, st);
+      } finally {
+        await subscription?.cancel();
+        socket?.close();
+        if (!controller.isClosed) await controller.close();
       }
-
-      // Collect for whatever is left of the window.
-      var remaining = deadline.difference(DateTime.now());
-      if (remaining > Duration.zero) await Future.delayed(remaining);
-
-      await subscription.cancel();
-      return byMac.values.toList();
-    } finally {
-      socket.close();
     }
+
+    controller = StreamController<ScanEvent>(
+      onListen: run,
+      onCancel: () {
+        cancelled = true;
+        // Closing the socket makes any remaining sends in this round no-ops
+        // (RawDatagramSocket.send returns 0 on a closed socket rather than
+        // throwing), so probing stops immediately instead of continuing on
+        // to the next await.
+        socket?.close();
+      },
+    );
+    return controller.stream;
   }
 
   /// Swallows the socket errors that discovery provokes by design.

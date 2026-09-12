@@ -48,11 +48,26 @@ void main() async {
   // is unaffected, so sweep the subnet one address at a time instead.
   if (discovered.isEmpty) {
     print('Broadcast found nothing, scanning the subnet...');
-    discovered = await WizDiscovery.scanSubnet(
+    // scanSubnet() returns the same list in one go; the streaming form
+    // reports progress and lights as they answer, which suits a progress bar.
+    await for (var event in WizDiscovery.scanSubnetStream(
       timeout: Duration(seconds: 5),
       // Defaults to this machine's own /24; pass e.g. subnet: '192.168.1'
       // to search a different one.
-    );
+    )) {
+      switch (event) {
+        case ScanProgress p:
+          print('Probed ${p.addressesProbed} of ${p.addressCount}');
+        case ScanFound f:
+          print('Found ${f.light.ip} (${f.light.mac})');
+        case ScanUpdated _:
+          break;
+        case ScanDone d:
+          discovered = d.lights;
+        case ScanFailed f:
+          print('Could not probe ${f.addressRange}: ${f.error}');
+      }
+    }
   }
 
   // Once you know where a light lives, ask it directly. This is quicker than a

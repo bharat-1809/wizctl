@@ -1,6 +1,7 @@
 import 'constants.dart';
 import 'exceptions.dart';
 import 'scene.dart';
+import 'state.dart';
 
 /// Build a control signal with multiple settings.
 ///
@@ -52,6 +53,66 @@ class ControlSignal {
   ControlSignal.coldWhite(int value, {int? brightness})
     : this(coldWhite: value, dimming: brightness);
   ControlSignal.speed(int value) : this(speed: value);
+
+  /// The signal that puts a light back into [state].
+  ///
+  /// Built for "blink to identify": capture with `getState()`, drive the bulb,
+  /// then send this to restore it. Exactly one channel is chosen, in the
+  /// order the bulb itself prioritises: an active scene (id > 0) wins over a
+  /// colour temperature, which wins over RGB, which wins over bare white
+  /// channels. Bulbs report the last colour alongside an active scene, so
+  /// sending everything back would not restore what the user saw.
+  ///
+  /// Values a bulb reported are trusted but clamped rather than rejected, so
+  /// this never throws: brightness to 10–100, speed to 10–200. A colour
+  /// temperature outside 1000–10000 K is dropped. A scene id the library does
+  /// not know is ignored the same way.
+  ///
+  /// [LightState.ratio] (the warm/cold split on dual-white bulbs) is not
+  /// restored.
+  factory ControlSignal.fromState(LightState state) {
+    var dimming = state.dimming?.clamp(minBrightness, maxBrightness);
+    var scene = state.sceneId;
+    // A scene id is active only when it's in the known range or is the rhythm scene.
+    if (scene != null &&
+        scene > 0 &&
+        (scene == rhythmSceneId ||
+            (scene >= minSceneId && scene <= maxSceneId))) {
+      return ControlSignal(
+        state: state.isOn,
+        dimming: dimming,
+        sceneId: scene,
+        speed: state.speed?.clamp(minSpeed, maxSpeed),
+      );
+    }
+    var temperature = state.temperature;
+    if (temperature != null &&
+        temperature >= minTemperature &&
+        temperature <= maxTemperature) {
+      return ControlSignal(
+        state: state.isOn,
+        dimming: dimming,
+        temperature: temperature,
+      );
+    }
+    if (state.r != null && state.g != null && state.b != null) {
+      return ControlSignal(
+        state: state.isOn,
+        dimming: dimming,
+        r: state.r!.clamp(minColorValue, maxColorValue),
+        g: state.g!.clamp(minColorValue, maxColorValue),
+        b: state.b!.clamp(minColorValue, maxColorValue),
+        coldWhite: state.coldWhite?.clamp(minColorValue, maxColorValue),
+        warmWhite: state.warmWhite?.clamp(minColorValue, maxColorValue),
+      );
+    }
+    return ControlSignal(
+      state: state.isOn,
+      dimming: dimming,
+      coldWhite: state.coldWhite?.clamp(minColorValue, maxColorValue),
+      warmWhite: state.warmWhite?.clamp(minColorValue, maxColorValue),
+    );
+  }
 
   void _validate() {
     if (dimming != null &&
